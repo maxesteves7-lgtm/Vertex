@@ -1,0 +1,163 @@
+// Vertex — Prediction Market Terminal
+// Schema for cross-exchange prediction market data
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ Exchanges ============
+
+enum ExchangeName {
+  POLYMARKET
+  KALSHI
+}
+
+model Exchange {
+  id          String       @id @default(cuid())
+  name        ExchangeName @unique
+  displayName String
+  websiteUrl  String
+  createdAt   DateTime     @default(now())
+
+  listings ExchangeListing[]
+}
+
+// ============ Markets ============
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  RESOLVED
+  CANCELED
+}
+
+// Canonical market — represents a single real-world question that may
+// be listed on multiple exchanges. Cross-exchange normalization happens here.
+model Market {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  question    String
+  description String?
+  category    String?
+  status      MarketStatus @default(OPEN)
+  resolvesAt  DateTime?
+  resolvedAt  DateTime?
+  resolution  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  listings       ExchangeListing[]
+  watchlistItems WatchlistItem[]
+  alerts         Alert[]
+
+  @@index([status])
+  @@index([category])
+}
+
+model ExchangeListing {
+  id          String   @id @default(cuid())
+  marketId    String
+  exchangeId  String
+  externalId  String
+  externalUrl String?
+  yesTokenId  String?
+  noTokenId   String?
+  rawPayload  Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  market   Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  exchange Exchange @relation(fields: [exchangeId], references: [id])
+  quotes   Quote[]
+
+  @@unique([exchangeId, externalId])
+  @@index([marketId])
+}
+
+model Quote {
+  id                String   @id @default(cuid())
+  exchangeListingId String
+  bid               Float?
+  ask               Float?
+  last              Float?
+  volume24h         Float?
+  liquidity         Float?
+  timestamp         DateTime @default(now())
+
+  exchangeListing ExchangeListing @relation(fields: [exchangeListingId], references: [id], onDelete: Cascade)
+
+  @@index([exchangeListingId, timestamp])
+}
+
+// ============ Users / Watchlists / Alerts ============
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  watchlists Watchlist[]
+  alerts     Alert[]
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WatchlistItem[]
+
+  @@index([userId])
+}
+
+model WatchlistItem {
+  id          String   @id @default(cuid())
+  watchlistId String
+  marketId    String
+  addedAt     DateTime @default(now())
+
+  watchlist Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  market    Market    @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, marketId])
+}
+
+enum AlertRuleType {
+  PRICE_ABOVE
+  PRICE_BELOW
+  SPREAD_WIDENS
+  VOLUME_SPIKE
+}
+
+enum AlertChannel {
+  EMAIL
+  WEBHOOK
+}
+
+model Alert {
+  id          String        @id @default(cuid())
+  userId      String
+  marketId    String
+  ruleType    AlertRuleType
+  threshold   Float
+  channel     AlertChannel
+  destination String
+  isActive    Boolean       @default(true)
+  lastFiredAt DateTime?
+  createdAt   DateTime      @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([marketId])
+}

@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+:root {
+  /* Predix terminal palette — dark, fintech-cyan primary */
+  --bg: #05070a;
+  --bg-elev: #0b0f14;
+  --bg-row: #0d1117;
+  --border: #1c2128;
+  --border-soft: #161a20;
+  --fg: #e6edf3;
+  --fg-dim: #7d8590;
+  --fg-mute: #4a525c;
+
+  --accent-primary: #22d3ee; /* cyan — primary brand */
+  --accent-amber: #fbbf24; /* amber — secondary highlight */
+  --accent-up: #3fb950; /* green */
+  --accent-down: #f85149; /* red */
+  --accent-violet: #a78bfa; /* violet — accents */
+  --accent-buy: #3fb950;
+  --accent-sell: #f85149;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elev: var(--bg-elev);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-dim: var(--fg-dim);
+  --color-primary: var(--accent-primary);
+  --color-amber: var(--accent-amber);
+  --color-up: var(--accent-up);
+  --color-down: var(--accent-down);
+  --color-violet: var(--accent-violet);
+  --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas,
+    monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1, "zero" 1, "cv11" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+::selection {
+  background: var(--accent-primary);
+  color: #00131a;
+}
+
+/* Scrollbar — terminal-thin */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a313a;
+}
+
+/* Subtle grid texture overlay on body */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  z-index: 0;
+}
+
+main, header, footer, nav {
+  position: relative;
+  z-index: 1;
+}
+
+/* Live blinking dot for active feeds */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-up);
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
