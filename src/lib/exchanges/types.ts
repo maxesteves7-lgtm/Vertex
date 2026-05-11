@@ -1,6 +1,7 @@
 import type { Category } from "../categories";
 
 export type ExchangeId = "POLYMARKET" | "KALSHI";
+export const EXCHANGE_IDS: ExchangeId[] = ["POLYMARKET", "KALSHI"];
 
 /**
  * Canonical shape that every exchange adapter normalizes its markets into.
@@ -18,6 +19,9 @@ export type CanonicalMarket = {
   liquidity: number | null;
   closesAt: Date | null;
   isActive: boolean;
+  /** Exchange-native token IDs (Polymarket uses CLOB token IDs for price history) */
+  yesTokenId?: string | null;
+  noTokenId?: string | null;
 };
 
 export type ExchangeQuote = {
@@ -42,6 +46,8 @@ export type ScreenerRow = {
   liquidity: number | null;
   polymarket: ExchangeQuote | null;
   kalshi: ExchangeQuote | null;
+  /** Polymarket YES outcome CLOB token ID (used to fetch price history) */
+  polymarketYesTokenId: string | null;
   /** Max - min of YES prices across listed exchanges (0..1), null if <2 quotes */
   spread: number | null;
 };

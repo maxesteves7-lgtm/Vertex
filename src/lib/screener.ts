@@ -61,6 +61,7 @@ export async function loadScreenerRows(limit = 100): Promise<ScreenerRow[]> {
       liquidity: ref.liquidity ?? null,
       polymarket: polyQuote,
       kalshi: kalshiQuote,
+      polymarketYesTokenId: p?.yesTokenId ?? null,
       spread,
     });
   }

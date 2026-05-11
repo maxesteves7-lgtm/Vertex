@@ -21,6 +21,8 @@ type GammaMarket = {
   volume24hr?: string | number;
   liquidity?: string | number;
   endDate?: string;
+  /** JSON-encoded array ["yesTokenId","noTokenId"] used to fetch CLOB price history */
+  clobTokenIds?: string;
 };
 
 function safeNumber(v: unknown): number | null {
@@ -82,6 +84,10 @@ export async function fetchPolymarketMarkets(
           ? prices[1]
           : null;
 
+    const tokenIds = parseJsonArray(m.clobTokenIds);
+    const yesTokenId = tokenIds[0] ?? null;
+    const noTokenId = tokenIds[1] ?? null;
+
     return {
       exchange: "POLYMARKET",
       externalId: m.id,
@@ -94,8 +100,41 @@ export async function fetchPolymarketMarkets(
       liquidity: safeNumber(m.liquidity),
       closesAt: m.endDate ? new Date(m.endDate) : null,
       isActive: m.active === true && m.closed !== true,
+      yesTokenId,
+      noTokenId,
     };
   });
+}
+
+// ============ Price history (CLOB) ============
+
+const CLOB_BASE = "https://clob.polymarket.com";
+
+export type PricePoint = { t: number; p: number };
+
+/**
+ * Fetch a price history series for a Polymarket YES outcome token.
+ * `interval` controls the granularity Polymarket returns.
+ */
+export async function fetchPolymarketPriceHistory(opts: {
+  tokenId: string;
+  interval?: "1h" | "6h" | "1d" | "1w" | "1m" | "max";
+  fidelity?: number;
+}): Promise<PricePoint[]> {
+  const url = new URL(`${CLOB_BASE}/prices-history`);
+  url.searchParams.set("market", opts.tokenId);
+  url.searchParams.set("interval", opts.interval ?? "1d");
+  if (opts.fidelity) url.searchParams.set("fidelity", String(opts.fidelity));
+
+  const res = await fetch(url.toString(), {
+    next: { revalidate: 60 },
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error(`Polymarket price-history returned ${res.status}`);
+  }
+  const json = (await res.json()) as { history?: Array<{ t: number; p: number }> };
+  return json.history ?? [];
 }
 
 // ============ Trades / Order Flow ============

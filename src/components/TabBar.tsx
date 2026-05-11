@@ -7,6 +7,7 @@ const TABS: Array<{ href: string; label: string; key: string }> = [
   { href: "/", label: "Screener", key: "screener" },
   { href: "/flow", label: "Order Flow", key: "flow" },
   { href: "/news", label: "News", key: "news" },
+  { href: "/calendar", label: "Calendar", key: "calendar" },
 ];
 
 export function TabBar() {

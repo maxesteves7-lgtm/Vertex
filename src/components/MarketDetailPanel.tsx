@@ -7,6 +7,8 @@ import type {
   TradeEvent,
 } from "@/lib/exchanges/types";
 import { fmtPct, fmtUsd, fmtRelativeDate } from "@/lib/format";
+import { PriceChart } from "./PriceChart";
+import { AlertButton } from "./AlertButton";
 
 type Props = {
   row: ScreenerRow;
@@ -114,11 +116,26 @@ export function MarketDetailPanel({
             )}
           </Section>
 
-          {/* Chart placeholder */}
-          <Section title="Price History (24h)">
-            <div className="border border-[var(--border)] bg-black h-40 flex items-center justify-center text-[var(--fg-dim)] text-xs">
-              CHART · WIRING HISTORICAL FEED — NEXT ROUND
-            </div>
+          {/* Real chart */}
+          <Section title="Price History">
+            <PriceChart tokenId={row.polymarketYesTokenId} />
+          </Section>
+
+          {/* Alerts */}
+          <Section title="Alerts">
+            {row.polymarket?.yesPrice !== null &&
+            row.polymarket?.yesPrice !== undefined ? (
+              <AlertButton
+                exchange="POLYMARKET"
+                externalMarketId={row.id.replace(/^POLYMARKET-/, "")}
+                marketQuestion={row.question}
+                yesPrice={row.polymarket.yesPrice}
+              />
+            ) : (
+              <div className="text-[var(--fg-dim)] text-xs">
+                No Polymarket quote — alerts unavailable.
+              </div>
+            )}
           </Section>
 
           {/* Related news */}

@@ -144,20 +144,28 @@ enum AlertChannel {
 }
 
 model Alert {
-  id          String        @id @default(cuid())
-  userId      String
-  marketId    String
-  ruleType    AlertRuleType
-  threshold   Float
-  channel     AlertChannel
-  destination String
-  isActive    Boolean       @default(true)
-  lastFiredAt DateTime?
-  createdAt   DateTime      @default(now())
+  id               String        @id @default(cuid())
+  userId           String
+  /// Optional FK to a hydrated Market record. We store external info
+  /// directly so alerts work for any Polymarket market without first
+  /// syncing the Market table.
+  marketId         String?
+  exchange         ExchangeName
+  externalMarketId String
+  marketQuestion   String
+  ruleType         AlertRuleType
+  threshold        Float
+  channel          AlertChannel
+  destination      String
+  isActive         Boolean       @default(true)
+  lastFiredAt      DateTime?
+  createdAt        DateTime      @default(now())
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market Market? @relation(fields: [marketId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([marketId])
+  @@index([exchange, externalMarketId])
+  @@index([isActive])
 }

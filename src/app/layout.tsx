@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { TabBar } from "@/components/TabBar";
+import { CommandBar } from "@/components/CommandBar";
 
 const jetbrains = JetBrains_Mono({
   variable: "--font-mono",
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--fg)] font-mono">
         <TabBar />
         {children}
+        <CommandBar />
       </body>
     </html>
   );

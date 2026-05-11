@@ -6,7 +6,7 @@ export const revalidate = 60;
 
 export default async function NewsPage() {
   const rows = await loadScreenerRows(120);
-  const news = getNewsForRows(
+  const news = await getNewsForRows(
     rows.map((r) => ({ id: r.id, question: r.question })),
   );
   // Build a quick lookup so the NewsFeed can render market chips
@@ -28,8 +28,8 @@ export default async function NewsPage() {
             </span>
           </span>
         </div>
-        <div className="text-[var(--accent-amber)] text-[10px] uppercase tracking-wider">
-          Seeded data · add NEWS_API_KEY for live feed
+        <div className="text-[var(--accent-primary)] text-[10px] uppercase tracking-wider">
+          {process.env.NEWS_API_KEY ? "Live · NewsAPI" : "Seeded · NEWS_API_KEY missing"}
         </div>
       </div>
 
