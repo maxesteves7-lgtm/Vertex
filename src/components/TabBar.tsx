@@ -54,8 +54,8 @@ export function TabBar() {
         <span className="flex items-center gap-1.5">
           <span className="live-dot" /> POLYMARKET
         </span>
-        <span>
-          KALSHI <span className="text-[var(--fg-mute)]">○ PENDING KEYS</span>
+        <span className="flex items-center gap-1.5">
+          <span className="live-dot" /> KALSHI
         </span>
       </div>
     </header>
