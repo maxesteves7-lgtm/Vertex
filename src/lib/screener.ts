@@ -66,8 +66,15 @@ export async function loadScreenerRows(limit = 100): Promise<ScreenerRow[]> {
     });
   }
 
-  rows.sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0));
-  return rows;
+  // Drop rows where no exchange surfaced a usable price — they're noise.
+  const useful = rows.filter(
+    (r) =>
+      typeof r.polymarket?.yesPrice === "number" ||
+      typeof r.kalshi?.yesPrice === "number",
+  );
+
+  useful.sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0));
+  return useful;
 }
 
 function indexByQuestion(

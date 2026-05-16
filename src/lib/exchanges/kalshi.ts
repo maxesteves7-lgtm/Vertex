@@ -84,7 +84,10 @@ export async function fetchKalshiMarkets(
         closesAt: m.close_time ? new Date(m.close_time) : null,
         isActive: (m.status ?? "").toLowerCase() === "active",
       };
-    });
+    })
+    // Drop quiet markets — no quote, no last trade, no recent volume.
+    // These pollute the screener with empty rows.
+    .filter((m) => m.yesPrice !== null && (m.volume24h ?? 0) > 0);
 }
 
 function midOrLast(
