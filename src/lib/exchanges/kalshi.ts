@@ -97,15 +97,22 @@ export async function fetchKalshiMarkets(
       const noPrice = 1 - yesPrice;
       const externalUrl = `https://kalshi.com/markets/${ev.event_ticker.toLowerCase()}`;
 
-      // Build a readable question. Kalshi market titles are often just the
-      // YES side ("Yes" / "Trump wins") — combine event title + market sub
-      // for a Polymarket-style "Will X happen?" feel where possible.
+      // Build a unique, readable question. Many Kalshi events have multiple
+      // child markets that share the parent title ("Who will the next Pope
+      // be?") and rely on yes_sub_title for the candidate. We always append
+      // the subtitle when it adds new info, so the screener doesn't dedupe
+      // sibling markets into a single row.
       const yesSub = (m.yes_sub_title ?? "").trim();
-      const question =
-        m.title?.trim() ||
-        (eventTitle && yesSub
-          ? `${eventTitle} — ${yesSub}`
-          : eventTitle || yesSub || m.ticker);
+      const titleBase = (m.title ?? eventTitle ?? "").trim();
+      const subAddsInfo =
+        yesSub.length > 0 &&
+        yesSub.toLowerCase() !== "yes" &&
+        !titleBase.toLowerCase().includes(yesSub.toLowerCase());
+      const question = subAddsInfo
+        ? titleBase
+          ? `${titleBase} — ${yesSub}`
+          : yesSub
+        : titleBase || yesSub || m.ticker;
 
       out.push({
         exchange: "KALSHI",
