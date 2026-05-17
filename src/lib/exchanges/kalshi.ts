@@ -1,15 +1,16 @@
 import type { CanonicalMarket, TradeEvent } from "./types";
 
 /**
- * Kalshi public market discovery — read-only endpoints don't require auth.
- * Docs: https://trading-api.readme.io/reference/getmarkets
+ * Kalshi public market discovery.
  *
- * Notes on the response shape (as of 2026):
- * - Prices are dollar strings (e.g. "0.3030") not cent ints.
- * - "Multivariate" combo bets (with mve_selected_legs) come through this
- *   endpoint too; we filter them out — they don't map to Polymarket markets.
- * - For authenticated endpoints (trading, balances) we'll add RSA-signed
- *   requests later when KALSHI_API_KEY_ID + KALSHI_PRIVATE_KEY are set.
+ * The /markets endpoint on Kalshi defaults to returning their multivariate
+ * combo bets (strike_type === "custom") which are weird parlays that don't
+ * map to Polymarket questions at all. To get the real binary markets we
+ * fetch /events?with_nested_markets=true and unpack the markets from each
+ * event.
+ *
+ * Read-only — no auth needed. KALSHI_API_KEY_ID + KALSHI_PRIVATE_KEY will
+ * be wired later for trade-feed + balances.
  */
 const KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2";
 
@@ -23,10 +24,8 @@ type KalshiMarket = {
   category?: string;
   status?: string;
   strike_type?: string;
-  /** Multivariate event component list — present on combo bets. */
   mve_selected_legs?: unknown[];
 
-  // New dollar-string fields
   yes_bid_dollars?: string;
   yes_ask_dollars?: string;
   no_bid_dollars?: string;
@@ -41,18 +40,28 @@ type KalshiMarket = {
   expiration_time?: string;
 };
 
-type KalshiResponse = {
+type KalshiEvent = {
+  event_ticker: string;
+  series_ticker?: string;
+  title?: string;
+  sub_title?: string;
+  category?: string;
+  status?: string;
   markets?: KalshiMarket[];
+};
+
+type EventsResponse = {
+  events?: KalshiEvent[];
   cursor?: string;
 };
 
 export async function fetchKalshiMarkets(
   limit = 200,
 ): Promise<CanonicalMarket[]> {
-  const pageSize = Math.min(limit, 1000);
-  const url = new URL(`${KALSHI_BASE}/markets`);
-  url.searchParams.set("limit", String(pageSize));
+  const url = new URL(`${KALSHI_BASE}/events`);
+  url.searchParams.set("limit", String(Math.min(limit, 200)));
   url.searchParams.set("status", "open");
+  url.searchParams.set("with_nested_markets", "true");
 
   const res = await fetch(url.toString(), {
     next: { revalidate: 30 },
@@ -60,74 +69,86 @@ export async function fetchKalshiMarkets(
   });
 
   if (!res.ok) {
-    throw new Error(`Kalshi API returned ${res.status}`);
+    throw new Error(`Kalshi events API returned ${res.status}`);
   }
 
-  const data = (await res.json()) as KalshiResponse;
-  const markets = data.markets ?? [];
+  const data = (await res.json()) as EventsResponse;
+  const events = data.events ?? [];
 
-  return markets
-    .filter((m) => !!m.title && !!m.ticker)
-    // Skip multivariate combo bets — strange products that don't map cross-exchange
-    .filter(
-      (m) =>
-        (!m.mve_selected_legs || m.mve_selected_legs.length === 0) &&
-        m.strike_type !== "custom",
-    )
-    .map<CanonicalMarket>((m) => {
-      // Kalshi dollar prices already are 0..1 (contract pays $1 on resolution).
-      const yesBid = parseDollar(m.yes_bid_dollars);
-      const yesAsk = parseDollar(m.yes_ask_dollars);
-      const last = parseDollar(m.last_price_dollars);
+  // Flatten markets out of every event, keeping the event-level category/title
+  // available so we can label and link correctly.
+  const out: CanonicalMarket[] = [];
+  for (const ev of events) {
+    const eventCategory = ev.category ?? deriveCategoryFromTicker(ev.series_ticker ?? ev.event_ticker);
+    const eventTitle = ev.title ?? "";
+    const markets = ev.markets ?? [];
 
-      let yesPrice: number | null = null;
-      if (yesBid !== null && yesAsk !== null && yesBid + yesAsk > 0) {
-        // Mid of bid/ask is the cleanest fair-value estimate.
-        yesPrice = (yesBid + yesAsk) / 2;
-      } else if (last !== null && last > 0) {
-        yesPrice = last;
-      } else if (yesAsk !== null && yesAsk > 0 && yesAsk < 1) {
-        // Fall back to ask if only one side is quoted.
-        yesPrice = yesAsk;
-      }
-      yesPrice = yesPrice !== null ? clamp01(yesPrice) : null;
-      const noPrice = yesPrice !== null ? 1 - yesPrice : null;
+    for (const m of markets) {
+      // Skip multivariate combo bets that occasionally leak in via events too.
+      if (m.strike_type === "custom") continue;
+      if (m.mve_selected_legs && m.mve_selected_legs.length > 0) continue;
+      if (!m.ticker) continue;
 
-      const eventTicker = m.event_ticker ?? m.ticker.split("-")[0];
-      const externalUrl = `https://kalshi.com/markets/${eventTicker.toLowerCase()}`;
+      const yesPrice = derivePrice(m);
+      if (yesPrice === null) continue;
+      // Skip degenerate quotes (perfectly 0 or 1).
+      if (yesPrice <= 0.001 || yesPrice >= 0.999) continue;
 
-      return {
+      const noPrice = 1 - yesPrice;
+      const externalUrl = `https://kalshi.com/markets/${ev.event_ticker.toLowerCase()}`;
+
+      // Build a readable question. Kalshi market titles are often just the
+      // YES side ("Yes" / "Trump wins") — combine event title + market sub
+      // for a Polymarket-style "Will X happen?" feel where possible.
+      const yesSub = (m.yes_sub_title ?? "").trim();
+      const question =
+        m.title?.trim() ||
+        (eventTitle && yesSub
+          ? `${eventTitle} — ${yesSub}`
+          : eventTitle || yesSub || m.ticker);
+
+      out.push({
         exchange: "KALSHI",
         externalId: m.ticker,
         externalUrl,
-        question: m.title!,
-        category: m.category ?? deriveCategoryFromTicker(m.ticker),
+        question,
+        category: m.category ?? eventCategory ?? null,
         yesPrice,
         noPrice,
         volume24h: parseDollar(m.volume_24h_fp),
         liquidity: parseDollar(m.liquidity_dollars),
         closesAt: m.close_time ? new Date(m.close_time) : null,
         isActive: (m.status ?? "").toLowerCase() === "active",
-      };
-    })
-    // Just require a meaningful price — Kalshi markets often show
-    // 0 volume_24h even when they're real. The screener already drops
-    // markets with no price on either exchange.
-    .filter(
-      (m) =>
-        m.yesPrice !== null && m.yesPrice > 0.001 && m.yesPrice < 0.999,
-    );
+      });
+    }
+  }
+
+  return out;
 }
 
-/** Many Kalshi tickers start with KX<CATEGORY> — we use that as a hint. */
-function deriveCategoryFromTicker(ticker: string): string | null {
+function derivePrice(m: KalshiMarket): number | null {
+  const yesBid = parseDollar(m.yes_bid_dollars);
+  const yesAsk = parseDollar(m.yes_ask_dollars);
+  const last = parseDollar(m.last_price_dollars);
+
+  if (yesBid !== null && yesAsk !== null && yesBid + yesAsk > 0) {
+    return clamp01((yesBid + yesAsk) / 2);
+  }
+  if (last !== null && last > 0) return clamp01(last);
+  if (yesAsk !== null && yesAsk > 0 && yesAsk < 1) return clamp01(yesAsk);
+  return null;
+}
+
+/** Bucket hint from series/event tickers like KXNBAGAME, KXBTC, KXFED. */
+function deriveCategoryFromTicker(ticker: string | undefined | null): string | null {
+  if (!ticker) return null;
   const u = ticker.toUpperCase();
-  if (/^KX(NBA|MLB|NFL|NHL|UFC|MMA|TENNIS|GOLF|MASTERS|F1|NASCAR|CFB|NCAA|EPL|UCL|FIFA)/.test(u))
+  if (/^KX(NBA|MLB|NFL|NHL|UFC|MMA|TENNIS|GOLF|MASTERS|F1|NASCAR|CFB|NCAA|EPL|UCL|FIFA|SPORT)/.test(u))
     return "Sports";
   if (/^KX(BTC|ETH|SOL|CRYPTO|COIN)/.test(u)) return "Crypto";
-  if (/^KX(FED|CPI|INF|GDP|JOBS|UNEMP|GAS|OIL|MORT|HOUSE|TREAS)/.test(u))
+  if (/^KX(FED|CPI|INF|GDP|JOBS|UNEMP|GAS|OIL|MORT|HOUSE|TREAS|RECESS)/.test(u))
     return "Macro";
-  if (/^KX(PRES|SEN|HOUSE|GOV|TRUMP|BIDEN|HARRIS|GOP|DEM)/.test(u))
+  if (/^KX(PRES|SEN|GOV|TRUMP|BIDEN|HARRIS|GOP|DEM|ELECTION|POLITIC)/.test(u))
     return "Politics";
   if (/^KX(AI|GPT|OPENAI|NVDA|TESLA|APPLE|GOOG|MSFT|META|AMZN)/.test(u))
     return "AI/Tech";
