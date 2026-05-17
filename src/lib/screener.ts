@@ -1,6 +1,7 @@
 import { bucketize } from "./categories";
 import { fetchPolymarketMarkets } from "./exchanges/polymarket";
 import { fetchKalshiMarkets } from "./exchanges/kalshi";
+import { buildSignature, greedyPair } from "./matching";
 import type {
   CanonicalMarket,
   ScreenerRow,
@@ -11,62 +12,44 @@ import type {
  * Loads all configured exchanges in parallel and merges them into a single
  * row-per-canonical-market shape ready for the screener UI.
  *
- * Cross-exchange matching uses a normalized question key for now; will
- * upgrade to entity-aware matching when more exchanges come online.
+ * Cross-exchange matching uses an entity-aware token signature so questions
+ * worded differently across exchanges still pair when they refer to the same
+ * underlying event (see lib/matching.ts).
  */
 export async function loadScreenerRows(limit = 100): Promise<ScreenerRow[]> {
   const [poly, kalshi] = await Promise.all([
     safe(() => fetchPolymarketMarkets(limit)),
-    safe(() => fetchKalshiMarkets(limit)),
+    safe(() => fetchKalshiMarkets(Math.max(limit, 200))),
   ]);
 
-  const polyByKey = indexByQuestion(poly);
-  const kalshiByKey = indexByQuestion(kalshi);
-
-  const allKeys = new Set<string>([
-    ...polyByKey.keys(),
-    ...kalshiByKey.keys(),
-  ]);
+  // Pair Polymarket↔Kalshi using signature similarity.
+  const { pairs, unmatchedA, unmatchedB } = greedyPair(
+    poly,
+    kalshi,
+    (m) => buildSignature(m.question),
+    0.4,
+  );
 
   const rows: ScreenerRow[] = [];
-  for (const key of allKeys) {
-    const p = polyByKey.get(key) ?? null;
-    const k = kalshiByKey.get(key) ?? null;
-    const ref = p ?? k;
-    if (!ref) continue;
 
-    const polyQuote = toQuote(p);
-    const kalshiQuote = toQuote(k);
-
-    const yesPrices = [polyQuote?.yesPrice, kalshiQuote?.yesPrice].filter(
-      (v): v is number => typeof v === "number" && Number.isFinite(v),
-    );
-    const spread =
-      yesPrices.length >= 2
-        ? Math.max(...yesPrices) - Math.min(...yesPrices)
-        : null;
-
-    const volumes = [polyQuote?.volume24h, kalshiQuote?.volume24h].filter(
-      (v): v is number => typeof v === "number" && Number.isFinite(v),
-    );
-    const totalVol = volumes.length ? volumes.reduce((a, b) => a + b, 0) : null;
-
-    rows.push({
-      id: `${ref.exchange}-${ref.externalId}`,
-      question: ref.question,
-      bucket: bucketize(ref.category, ref.question),
-      rawCategory: ref.category,
-      closesAt: ref.closesAt,
-      volume24h: totalVol,
-      liquidity: ref.liquidity ?? null,
-      polymarket: polyQuote,
-      kalshi: kalshiQuote,
-      polymarketYesTokenId: p?.yesTokenId ?? null,
-      spread,
-    });
+  // Paired rows — both exchanges contribute
+  for (const { aIdx, bIdx } of pairs) {
+    const p = poly[aIdx];
+    const k = kalshi[bIdx];
+    rows.push(buildRow(p, k));
   }
 
-  // Drop rows where no exchange surfaced a usable price — they're noise.
+  // Polymarket-only
+  for (const i of unmatchedA) {
+    rows.push(buildRow(poly[i], null));
+  }
+
+  // Kalshi-only
+  for (const j of unmatchedB) {
+    rows.push(buildRow(null, kalshi[j]));
+  }
+
+  // Drop rows where neither side has a real price.
   const useful = rows.filter(
     (r) =>
       typeof r.polymarket?.yesPrice === "number" ||
@@ -77,12 +60,42 @@ export async function loadScreenerRows(limit = 100): Promise<ScreenerRow[]> {
   return useful;
 }
 
-function indexByQuestion(
-  list: CanonicalMarket[],
-): Map<string, CanonicalMarket> {
-  const map = new Map<string, CanonicalMarket>();
-  for (const m of list) map.set(normalizeQuestion(m.question), m);
-  return map;
+function buildRow(
+  p: CanonicalMarket | null,
+  k: CanonicalMarket | null,
+): ScreenerRow {
+  // Prefer Polymarket as the canonical row identity when both exist —
+  // its questions tend to be more readable.
+  const ref = p ?? k!;
+  const polyQuote = toQuote(p);
+  const kalshiQuote = toQuote(k);
+
+  const yesPrices = [polyQuote?.yesPrice, kalshiQuote?.yesPrice].filter(
+    (v): v is number => typeof v === "number" && Number.isFinite(v),
+  );
+  const spread =
+    yesPrices.length >= 2
+      ? Math.max(...yesPrices) - Math.min(...yesPrices)
+      : null;
+
+  const volumes = [polyQuote?.volume24h, kalshiQuote?.volume24h].filter(
+    (v): v is number => typeof v === "number" && Number.isFinite(v),
+  );
+  const totalVol = volumes.length ? volumes.reduce((a, b) => a + b, 0) : null;
+
+  return {
+    id: `${ref.exchange}-${ref.externalId}`,
+    question: ref.question,
+    bucket: bucketize(ref.category, ref.question),
+    rawCategory: ref.category,
+    closesAt: ref.closesAt,
+    volume24h: totalVol,
+    liquidity: ref.liquidity ?? null,
+    polymarket: polyQuote,
+    kalshi: kalshiQuote,
+    polymarketYesTokenId: p?.yesTokenId ?? null,
+    spread,
+  };
 }
 
 function toQuote(m: CanonicalMarket | null): ExchangeQuote | null {
@@ -93,14 +106,6 @@ function toQuote(m: CanonicalMarket | null): ExchangeQuote | null {
     url: m.externalUrl,
     volume24h: m.volume24h,
   };
-}
-
-function normalizeQuestion(q: string): string {
-  return q
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 async function safe<T>(fn: () => Promise<T[]>): Promise<T[]> {
