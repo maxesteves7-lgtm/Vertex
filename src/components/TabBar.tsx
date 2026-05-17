@@ -18,10 +18,10 @@ export function TabBar() {
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 border-r border-[var(--border)]">
         <span className="text-[var(--accent-primary)] font-bold tracking-[0.3em] text-sm">
-          PREDIX
+          FUTURIST
         </span>
         <span className="text-[var(--fg-mute)] text-[10px] uppercase tracking-wider hidden md:inline">
-          v0.3
+          v0.5
         </span>
       </div>
 

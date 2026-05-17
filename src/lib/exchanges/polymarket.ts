@@ -42,12 +42,15 @@ function parseJsonArray(raw: string | undefined): string[] {
 }
 
 export async function fetchPolymarketMarkets(
-  limit = 50,
+  limit = 500,
 ): Promise<CanonicalMarket[]> {
+  // Polymarket Gamma caps page size around 500; for higher totals we'd
+  // paginate via offset. 500 is plenty for the screener's purposes.
+  const pageSize = Math.min(limit, 500);
   const url = new URL(`${GAMMA_BASE}/markets`);
   url.searchParams.set("active", "true");
   url.searchParams.set("closed", "false");
-  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("limit", String(pageSize));
   url.searchParams.set("order", "volume24hr");
   url.searchParams.set("ascending", "false");
 

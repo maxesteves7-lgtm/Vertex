@@ -19,9 +19,24 @@ export type CanonicalMarket = {
   liquidity: number | null;
   closesAt: Date | null;
   isActive: boolean;
-  /** Exchange-native token IDs (Polymarket uses CLOB token IDs for price history) */
   yesTokenId?: string | null;
   noTokenId?: string | null;
+  /**
+   * For multi-candidate events (e.g. "Who will be the next CEO of JP Morgan
+   * Chase?"), this canonical market represents the leading candidate. The
+   * remaining candidates live here so the detail panel can show all options.
+   */
+  siblings?: SiblingMarket[];
+};
+
+export type SiblingMarket = {
+  /** Candidate name / outcome label, e.g. "Marianne Lake" */
+  label: string;
+  externalId: string;
+  externalUrl: string;
+  yesPrice: number | null;
+  noPrice: number | null;
+  volume24h: number | null;
 };
 
 export type ExchangeQuote = {
@@ -29,6 +44,8 @@ export type ExchangeQuote = {
   noPrice: number | null;
   url: string;
   volume24h: number | null;
+  /** Candidates for multi-outcome events — shown in detail panel. */
+  siblings?: SiblingMarket[];
 };
 
 /**
@@ -46,7 +63,6 @@ export type ScreenerRow = {
   liquidity: number | null;
   polymarket: ExchangeQuote | null;
   kalshi: ExchangeQuote | null;
-  /** Polymarket YES outcome CLOB token ID (used to fetch price history) */
   polymarketYesTokenId: string | null;
   /** Max - min of YES prices across listed exchanges (0..1), null if <2 quotes */
   spread: number | null;
@@ -75,10 +91,7 @@ export type NewsItem = {
   source: string;
   headline: string;
   url: string;
-  /** Free-text body or summary (optional) */
   summary?: string;
-  /** IDs of canonical screener rows this item likely affects */
   affectedMarketIds: string[];
-  /** YES-price delta caused by this news, if measurable (0..1, signed) */
   priceImpact?: number;
 };

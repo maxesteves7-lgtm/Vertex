@@ -10,7 +10,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PREDIX // Prediction Market Terminal",
+  title: "FUTURIST // Prediction Market Terminal",
   description:
     "Cross-exchange prediction market terminal — screener, order flow, and news.",
 };

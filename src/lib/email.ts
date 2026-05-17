@@ -68,7 +68,7 @@ export function alertEmailHtml(args: {
 <html><body style="background:#05070a;color:#e6edf3;font-family:Menlo,Consolas,monospace;padding:32px;">
   <div style="max-width:560px;margin:0 auto;border:1px solid #1c2128;background:#0b0f14;">
     <div style="padding:16px 20px;border-bottom:1px solid #1c2128;">
-      <span style="color:#22d3ee;font-weight:bold;letter-spacing:0.3em;">PREDIX</span>
+      <span style="color:#22d3ee;font-weight:bold;letter-spacing:0.3em;">FUTURIST</span>
       <span style="color:#7d8590;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;margin-left:12px;">Alert Triggered</span>
     </div>
     <div style="padding:20px;">
@@ -83,7 +83,7 @@ export function alertEmailHtml(args: {
       </div>
     </div>
     <div style="padding:12px 20px;border-top:1px solid #1c2128;font-size:10px;color:#4a525c;text-transform:uppercase;letter-spacing:0.1em;">
-      Sent by Predix · You set this alert in the terminal
+      Sent by Futurist · You set this alert in the terminal
     </div>
   </div>
 </body></html>`;

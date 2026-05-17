@@ -130,7 +130,7 @@ async function fireAlertEmail(
       : `YES price ≤ ${(a.threshold * 100).toFixed(1)}%`;
   await sendEmail({
     to: a.destination,
-    subject: `[Predix] ${a.marketQuestion.slice(0, 80)}`,
+    subject: `[Futurist] ${a.marketQuestion.slice(0, 80)}`,
     html: alertEmailHtml({
       question: a.marketQuestion,
       ruleHuman,

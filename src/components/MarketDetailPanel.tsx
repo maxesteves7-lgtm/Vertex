@@ -116,6 +116,20 @@ export function MarketDetailPanel({
             )}
           </Section>
 
+          {/* Candidates list (multi-outcome events) */}
+          {(row.polymarket?.siblings && row.polymarket.siblings.length > 0) ||
+          (row.kalshi?.siblings && row.kalshi.siblings.length > 0) ? (
+            <Section
+              title={`Candidates (${
+                (row.polymarket?.siblings?.length ?? 0) +
+                (row.kalshi?.siblings?.length ?? 0) +
+                (row.polymarket || row.kalshi ? 1 : 0)
+              })`}
+            >
+              <SiblingsList row={row} />
+            </Section>
+          ) : null}
+
           {/* Real chart */}
           <Section title="Price History">
             <PriceChart tokenId={row.polymarketYesTokenId} />
@@ -331,6 +345,121 @@ function ExchangeRow({
       </td>
     </tr>
   );
+}
+
+/**
+ * Renders all candidates for a multi-outcome event. Includes the leader
+ * (currently shown as the row headline) at the top, then siblings sorted
+ * by descending probability. Shows side-by-side Kalshi prices when present.
+ */
+function SiblingsList({ row }: { row: ScreenerRow }) {
+  type Cand = {
+    label: string;
+    polyPrice: number | null;
+    kalshiPrice: number | null;
+    url: string;
+  };
+  const cands: Cand[] = [];
+
+  // Leader (the canonical row itself) appears first as a "primary" candidate.
+  // For Kalshi-only multi-outcome events its leader label comes from the
+  // question after the em-dash, or the question itself.
+  const leaderLabel = leaderLabelFromQuestion(row.question);
+  cands.push({
+    label: leaderLabel,
+    polyPrice: row.polymarket?.yesPrice ?? null,
+    kalshiPrice: row.kalshi?.yesPrice ?? null,
+    url: row.polymarket?.url ?? row.kalshi?.url ?? "",
+  });
+
+  // Siblings — for now we trust each exchange independently; cross-exchange
+  // sibling matching is a future enhancement.
+  const polyS = row.polymarket?.siblings ?? [];
+  const kalshiS = row.kalshi?.siblings ?? [];
+  // De-dupe by label (lowercase) when both exchanges list the same candidate.
+  const map = new Map<string, Cand>();
+  for (const s of polyS) {
+    map.set(s.label.toLowerCase(), {
+      label: s.label,
+      polyPrice: s.yesPrice,
+      kalshiPrice: null,
+      url: s.externalUrl,
+    });
+  }
+  for (const s of kalshiS) {
+    const key = s.label.toLowerCase();
+    const existing = map.get(key);
+    if (existing) {
+      existing.kalshiPrice = s.yesPrice;
+    } else {
+      map.set(key, {
+        label: s.label,
+        polyPrice: null,
+        kalshiPrice: s.yesPrice,
+        url: s.externalUrl,
+      });
+    }
+  }
+  cands.push(...map.values());
+
+  cands.sort((a, b) => {
+    const aMax = Math.max(a.polyPrice ?? 0, a.kalshiPrice ?? 0);
+    const bMax = Math.max(b.polyPrice ?? 0, b.kalshiPrice ?? 0);
+    return bMax - aMax;
+  });
+
+  return (
+    <table className="w-full text-xs">
+      <thead>
+        <tr className="text-left text-[var(--fg-dim)] uppercase text-[10px]">
+          <th className="py-1 font-normal">Candidate</th>
+          <th className="py-1 font-normal text-right">Polymarket</th>
+          <th className="py-1 font-normal text-right">Kalshi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {cands.map((c, i) => (
+          <tr key={`${c.label}-${i}`} className="border-t border-[var(--border-soft)]">
+            <td className="py-1.5 text-[var(--fg)] truncate max-w-[260px]" title={c.label}>
+              {i === 0 && (
+                <span className="text-[9px] uppercase tracking-wider text-[var(--accent-primary)] mr-1.5">
+                  Lead
+                </span>
+              )}
+              {c.label}
+            </td>
+            <td className="py-1.5 text-right">
+              {c.polyPrice !== null ? (
+                <span className="text-[var(--accent-up)] font-semibold">
+                  {fmtPct(c.polyPrice)}
+                </span>
+              ) : (
+                <span className="text-[var(--fg-mute)]">—</span>
+              )}
+            </td>
+            <td className="py-1.5 text-right">
+              {c.kalshiPrice !== null ? (
+                <span className="text-[var(--accent-up)] font-semibold">
+                  {fmtPct(c.kalshiPrice)}
+                </span>
+              ) : (
+                <span className="text-[var(--fg-mute)]">—</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function leaderLabelFromQuestion(q: string): string {
+  // "Who will be the next CEO of JP Morgan Chase? — Marianne Lake" → "Marianne Lake"
+  const dash = q.lastIndexOf("—");
+  if (dash >= 0 && dash < q.length - 1) {
+    return q.slice(dash + 1).trim();
+  }
+  return q;
 }
 
 function fmtRelativeTime(d: Date): string {

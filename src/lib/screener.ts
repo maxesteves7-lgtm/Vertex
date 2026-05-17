@@ -9,20 +9,17 @@ import type {
 } from "./exchanges/types";
 
 /**
- * Loads all configured exchanges in parallel and merges them into a single
- * row-per-canonical-market shape ready for the screener UI.
- *
- * Cross-exchange matching uses an entity-aware token signature so questions
- * worded differently across exchanges still pair when they refer to the same
- * underlying event (see lib/matching.ts).
+ * Loads all configured exchanges in parallel, pairs markets across them via
+ * the entity-aware signature matcher, and returns rows sorted with the
+ * matched-on-both rows pinned to the top (those are the interesting ones —
+ * they're the only places spread/arbitrage is meaningful).
  */
-export async function loadScreenerRows(limit = 100): Promise<ScreenerRow[]> {
+export async function loadScreenerRows(_unused = 500): Promise<ScreenerRow[]> {
   const [poly, kalshi] = await Promise.all([
-    safe(() => fetchPolymarketMarkets(limit)),
-    safe(() => fetchKalshiMarkets(Math.max(limit, 200))),
+    safe(() => fetchPolymarketMarkets(500)),
+    safe(() => fetchKalshiMarkets(2000)),
   ]);
 
-  // Pair Polymarket↔Kalshi using signature similarity.
   const { pairs, unmatchedA, unmatchedB } = greedyPair(
     poly,
     kalshi,
@@ -32,31 +29,35 @@ export async function loadScreenerRows(limit = 100): Promise<ScreenerRow[]> {
 
   const rows: ScreenerRow[] = [];
 
-  // Paired rows — both exchanges contribute
   for (const { aIdx, bIdx } of pairs) {
-    const p = poly[aIdx];
-    const k = kalshi[bIdx];
-    rows.push(buildRow(p, k));
+    rows.push(buildRow(poly[aIdx], kalshi[bIdx]));
   }
-
-  // Polymarket-only
   for (const i of unmatchedA) {
     rows.push(buildRow(poly[i], null));
   }
-
-  // Kalshi-only
   for (const j of unmatchedB) {
     rows.push(buildRow(null, kalshi[j]));
   }
 
-  // Drop rows where neither side has a real price.
   const useful = rows.filter(
     (r) =>
       typeof r.polymarket?.yesPrice === "number" ||
       typeof r.kalshi?.yesPrice === "number",
   );
 
-  useful.sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0));
+  // Matched-on-both rows pin to top. Within each group, sort by
+  // spread desc (interesting arbs first), then by total volume desc.
+  useful.sort((a, b) => {
+    const aBoth = !!a.polymarket && !!a.kalshi ? 1 : 0;
+    const bBoth = !!b.polymarket && !!b.kalshi ? 1 : 0;
+    if (aBoth !== bBoth) return bBoth - aBoth;
+    if (aBoth === 1 && bBoth === 1) {
+      const sd = (b.spread ?? 0) - (a.spread ?? 0);
+      if (sd !== 0) return sd;
+    }
+    return (b.volume24h ?? 0) - (a.volume24h ?? 0);
+  });
+
   return useful;
 }
 
@@ -64,8 +65,6 @@ function buildRow(
   p: CanonicalMarket | null,
   k: CanonicalMarket | null,
 ): ScreenerRow {
-  // Prefer Polymarket as the canonical row identity when both exist —
-  // its questions tend to be more readable.
   const ref = p ?? k!;
   const polyQuote = toQuote(p);
   const kalshiQuote = toQuote(k);
@@ -105,6 +104,7 @@ function toQuote(m: CanonicalMarket | null): ExchangeQuote | null {
     noPrice: m.noPrice,
     url: m.externalUrl,
     volume24h: m.volume24h,
+    siblings: m.siblings,
   };
 }
 

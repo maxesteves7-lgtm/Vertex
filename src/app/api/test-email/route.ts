@@ -11,8 +11,8 @@ export async function GET() {
   try {
     const result = await sendEmail({
       to: process.env.ALERT_EMAIL_TO ?? "",
-      subject: "[Predix] Test email — wiring check",
-      html: `<p>If you received this, Resend is wired and Predix can send alerts.</p>
+      subject: "[Futurist] Test email — wiring check",
+      html: `<p>If you received this, Resend is wired and Futurist can send alerts.</p>
              <p style="color:#888;font-size:12px;">Sent at ${new Date().toISOString()}</p>`,
     });
     return NextResponse.json({ ok: true, result });
