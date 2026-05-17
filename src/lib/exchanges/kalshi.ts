@@ -4,8 +4,12 @@ import type { CanonicalMarket, TradeEvent } from "./types";
  * Kalshi public market discovery — read-only endpoints don't require auth.
  * Docs: https://trading-api.readme.io/reference/getmarkets
  *
- * For authenticated endpoints (trading, balances) we'll add RSA-signed
- * requests later when KALSHI_API_KEY_ID + KALSHI_PRIVATE_KEY are set.
+ * Notes on the response shape (as of 2026):
+ * - Prices are dollar strings (e.g. "0.3030") not cent ints.
+ * - "Multivariate" combo bets (with mve_selected_legs) come through this
+ *   endpoint too; we filter them out — they don't map to Polymarket markets.
+ * - For authenticated endpoints (trading, balances) we'll add RSA-signed
+ *   requests later when KALSHI_API_KEY_ID + KALSHI_PRIVATE_KEY are set.
  */
 const KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2";
 
@@ -14,20 +18,25 @@ type KalshiMarket = {
   event_ticker?: string;
   market_type?: string;
   title?: string;
-  subtitle?: string;
+  yes_sub_title?: string;
+  no_sub_title?: string;
   category?: string;
   status?: string;
-  /** Bid for the YES side, in cents (0..100). */
-  yes_bid?: number;
-  yes_ask?: number;
-  no_bid?: number;
-  no_ask?: number;
-  /** Last trade price in cents (0..100). */
-  last_price?: number;
-  volume?: number;
-  volume_24h?: number;
-  liquidity?: number;
-  open_interest?: number;
+  strike_type?: string;
+  /** Multivariate event component list — present on combo bets. */
+  mve_selected_legs?: unknown[];
+
+  // New dollar-string fields
+  yes_bid_dollars?: string;
+  yes_ask_dollars?: string;
+  no_bid_dollars?: string;
+  no_ask_dollars?: string;
+  last_price_dollars?: string;
+  volume_fp?: string;
+  volume_24h_fp?: string;
+  liquidity_dollars?: string;
+  open_interest_fp?: string;
+
   close_time?: string;
   expiration_time?: string;
 };
@@ -38,10 +47,9 @@ type KalshiResponse = {
 };
 
 export async function fetchKalshiMarkets(
-  limit = 100,
+  limit = 200,
 ): Promise<CanonicalMarket[]> {
-  // Kalshi caps page size at 1000; we usually want top 100-200
-  const pageSize = Math.min(limit, 200);
+  const pageSize = Math.min(limit, 1000);
   const url = new URL(`${KALSHI_BASE}/markets`);
   url.searchParams.set("limit", String(pageSize));
   url.searchParams.set("status", "open");
@@ -60,56 +68,82 @@ export async function fetchKalshiMarkets(
 
   return markets
     .filter((m) => !!m.title && !!m.ticker)
+    // Skip multivariate combo bets — strange products that don't map cross-exchange
+    .filter(
+      (m) =>
+        (!m.mve_selected_legs || m.mve_selected_legs.length === 0) &&
+        m.strike_type !== "custom",
+    )
     .map<CanonicalMarket>((m) => {
-      // Kalshi prices are cents (0..100). Mid of bid/ask gives a fair YES price;
-      // fall back to last_price if quote isn't populated.
-      const yesPriceCents = midOrLast(m.yes_bid, m.yes_ask, m.last_price);
-      const yesPrice =
-        yesPriceCents !== null ? clamp01(yesPriceCents / 100) : null;
+      // Kalshi dollar prices already are 0..1 (contract pays $1 on resolution).
+      const yesBid = parseDollar(m.yes_bid_dollars);
+      const yesAsk = parseDollar(m.yes_ask_dollars);
+      const last = parseDollar(m.last_price_dollars);
+
+      let yesPrice: number | null = null;
+      if (yesBid !== null && yesAsk !== null && yesBid + yesAsk > 0) {
+        // Mid of bid/ask is the cleanest fair-value estimate.
+        yesPrice = (yesBid + yesAsk) / 2;
+      } else if (last !== null && last > 0) {
+        yesPrice = last;
+      } else if (yesAsk !== null && yesAsk > 0 && yesAsk < 1) {
+        // Fall back to ask if only one side is quoted.
+        yesPrice = yesAsk;
+      }
+      yesPrice = yesPrice !== null ? clamp01(yesPrice) : null;
       const noPrice = yesPrice !== null ? 1 - yesPrice : null;
 
       const eventTicker = m.event_ticker ?? m.ticker.split("-")[0];
-      const externalUrl = `https://kalshi.com/markets/${eventTicker}/${m.ticker.toLowerCase()}`;
+      const externalUrl = `https://kalshi.com/markets/${eventTicker.toLowerCase()}`;
 
       return {
         exchange: "KALSHI",
         externalId: m.ticker,
         externalUrl,
         question: m.title!,
-        category: m.category ?? null,
+        category: m.category ?? deriveCategoryFromTicker(m.ticker),
         yesPrice,
         noPrice,
-        volume24h: safeNum(m.volume_24h),
-        liquidity: safeNum(m.liquidity),
+        volume24h: parseDollar(m.volume_24h_fp),
+        liquidity: parseDollar(m.liquidity_dollars),
         closesAt: m.close_time ? new Date(m.close_time) : null,
         isActive: (m.status ?? "").toLowerCase() === "active",
       };
     })
-    // Drop quiet markets — no quote, no last trade, no recent volume.
-    // These pollute the screener with empty rows.
-    .filter((m) => m.yesPrice !== null && (m.volume24h ?? 0) > 0);
+    // Keep markets with a real quote AND some sign of activity.
+    .filter(
+      (m) =>
+        m.yesPrice !== null &&
+        ((m.volume24h ?? 0) > 0 || (m.liquidity ?? 0) > 0),
+    );
 }
 
-function midOrLast(
-  bid: number | undefined,
-  ask: number | undefined,
-  last: number | undefined,
-): number | null {
-  if (typeof bid === "number" && typeof ask === "number") {
-    return (bid + ask) / 2;
-  }
-  if (typeof last === "number") return last;
+/** Many Kalshi tickers start with KX<CATEGORY> — we use that as a hint. */
+function deriveCategoryFromTicker(ticker: string): string | null {
+  const u = ticker.toUpperCase();
+  if (/^KX(NBA|MLB|NFL|NHL|UFC|MMA|TENNIS|GOLF|MASTERS|F1|NASCAR|CFB|NCAA|EPL|UCL|FIFA)/.test(u))
+    return "Sports";
+  if (/^KX(BTC|ETH|SOL|CRYPTO|COIN)/.test(u)) return "Crypto";
+  if (/^KX(FED|CPI|INF|GDP|JOBS|UNEMP|GAS|OIL|MORT|HOUSE|TREAS)/.test(u))
+    return "Macro";
+  if (/^KX(PRES|SEN|HOUSE|GOV|TRUMP|BIDEN|HARRIS|GOP|DEM)/.test(u))
+    return "Politics";
+  if (/^KX(AI|GPT|OPENAI|NVDA|TESLA|APPLE|GOOG|MSFT|META|AMZN)/.test(u))
+    return "AI/Tech";
+  if (/^KX(HUR|TEMP|WEATHER|RAIN|SNOW)/.test(u)) return "Weather";
+  if (/^KX(OSCAR|GRAMMY|EMMY|MOVIE|TV|MUSIC|TAYLOR)/.test(u)) return "Culture";
+  if (/^KX(PAND|VIRUS|FDA|VAX|HEALTH)/.test(u)) return "Health";
   return null;
+}
+
+function parseDollar(s: string | number | undefined | null): number | null {
+  if (s === undefined || s === null) return null;
+  const n = typeof s === "number" ? s : parseFloat(s);
+  return Number.isFinite(n) ? n : null;
 }
 
 function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
-}
-
-function safeNum(v: unknown): number | null {
-  if (v === null || v === undefined) return null;
-  const n = typeof v === "string" ? parseFloat(v) : (v as number);
-  return Number.isFinite(n) ? n : null;
 }
 
 /**
