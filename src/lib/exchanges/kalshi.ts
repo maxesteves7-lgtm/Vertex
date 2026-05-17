@@ -110,11 +110,12 @@ export async function fetchKalshiMarkets(
         isActive: (m.status ?? "").toLowerCase() === "active",
       };
     })
-    // Keep markets with a real quote AND some sign of activity.
+    // Just require a meaningful price — Kalshi markets often show
+    // 0 volume_24h even when they're real. The screener already drops
+    // markets with no price on either exchange.
     .filter(
       (m) =>
-        m.yesPrice !== null &&
-        ((m.volume24h ?? 0) > 0 || (m.liquidity ?? 0) > 0),
+        m.yesPrice !== null && m.yesPrice > 0.001 && m.yesPrice < 0.999,
     );
 }
 
