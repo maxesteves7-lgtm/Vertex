@@ -16,8 +16,8 @@ import type {
  */
 export async function loadScreenerRows(_unused = 500): Promise<ScreenerRow[]> {
   const [poly, kalshi] = await Promise.all([
-    safe(() => fetchPolymarketMarkets(500)),
-    safe(() => fetchKalshiMarkets(2000)),
+    safe(() => fetchPolymarketMarkets(1000)),
+    safe(() => fetchKalshiMarkets(2500)),
   ]);
 
   const { pairs, unmatchedA, unmatchedB } = greedyPair(
@@ -39,11 +39,18 @@ export async function loadScreenerRows(_unused = 500): Promise<ScreenerRow[]> {
     rows.push(buildRow(null, kalshi[j]));
   }
 
-  const useful = rows.filter(
-    (r) =>
+  // Only show rows that (a) have a real tradable price on at least one
+  // exchange and (b) haven't already closed. Markets whose close date is in
+  // the past are events that already happened — they shouldn't appear.
+  const now = Date.now();
+  const useful = rows.filter((r) => {
+    const hasPrice =
       typeof r.polymarket?.yesPrice === "number" ||
-      typeof r.kalshi?.yesPrice === "number",
-  );
+      typeof r.kalshi?.yesPrice === "number";
+    if (!hasPrice) return false;
+    if (r.closesAt && r.closesAt.getTime() <= now) return false;
+    return true;
+  });
 
   // Matched-on-both rows pin to top. Within each group, sort by
   // spread desc (interesting arbs first), then by total volume desc.

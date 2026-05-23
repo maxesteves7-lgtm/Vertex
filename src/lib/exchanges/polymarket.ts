@@ -41,31 +41,46 @@ function parseJsonArray(raw: string | undefined): string[] {
   }
 }
 
+const GAMMA_PAGE_SIZE = 500;
+
 export async function fetchPolymarketMarkets(
-  limit = 500,
+  limit = 1000,
 ): Promise<CanonicalMarket[]> {
-  // Polymarket Gamma caps page size around 500; for higher totals we'd
-  // paginate via offset. 500 is plenty for the screener's purposes.
-  const pageSize = Math.min(limit, 500);
-  const url = new URL(`${GAMMA_BASE}/markets`);
-  url.searchParams.set("active", "true");
-  url.searchParams.set("closed", "false");
-  url.searchParams.set("limit", String(pageSize));
-  url.searchParams.set("order", "volume24hr");
-  url.searchParams.set("ascending", "false");
+  // Polymarket Gamma caps page size around 500, so to capture all the
+  // tradable upcoming markets (not just the top-volume slice) we page through
+  // via the `offset` param, ordered by 24h volume, until we hit `limit` or a
+  // short page signals the end.
+  const data: GammaMarket[] = [];
+  for (let offset = 0; offset < limit; offset += GAMMA_PAGE_SIZE) {
+    const pageSize = Math.min(GAMMA_PAGE_SIZE, limit - offset);
+    const url = new URL(`${GAMMA_BASE}/markets`);
+    url.searchParams.set("active", "true");
+    url.searchParams.set("closed", "false");
+    url.searchParams.set("limit", String(pageSize));
+    url.searchParams.set("offset", String(offset));
+    url.searchParams.set("order", "volume24hr");
+    url.searchParams.set("ascending", "false");
 
-  const res = await fetch(url.toString(), {
-    next: { revalidate: 30 },
-    headers: { accept: "application/json" },
-  });
+    const res = await fetch(url.toString(), {
+      next: { revalidate: 30 },
+      headers: { accept: "application/json" },
+    });
 
-  if (!res.ok) {
-    throw new Error(
-      `Polymarket gamma API returned ${res.status}: ${await res.text().catch(() => "")}`,
-    );
+    if (!res.ok) {
+      // First page failing is a real error; later pages failing just caps
+      // coverage, so keep whatever we already gathered.
+      if (offset === 0) {
+        throw new Error(
+          `Polymarket gamma API returned ${res.status}: ${await res.text().catch(() => "")}`,
+        );
+      }
+      break;
+    }
+
+    const page = (await res.json()) as GammaMarket[];
+    data.push(...page);
+    if (page.length < pageSize) break; // no more pages
   }
-
-  const data = (await res.json()) as GammaMarket[];
 
   return data.map<CanonicalMarket>((m) => {
     const prices = parseJsonArray(m.outcomePrices).map((p) => parseFloat(p));

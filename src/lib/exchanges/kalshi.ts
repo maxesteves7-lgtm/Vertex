@@ -59,7 +59,7 @@ type EventsResponse = {
 };
 
 const PAGE_SIZE = 200;
-const MAX_PAGES = 8;
+const MAX_PAGES = 15;
 
 export async function fetchKalshiMarkets(
   limit = 2000,

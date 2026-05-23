@@ -70,14 +70,17 @@ export function buildSignature(question: string): Signature {
     if (norm) months.add(norm);
   }
 
-  // Dollar / large-number magnitudes. Catches "150k", "$150,000", "1.5m"
+  // Dollar / large-number magnitudes. Catches "150k", "$150,000", "1.5m".
+  // The k/m/b suffix must be glued directly to the number and end on a word
+  // boundary — otherwise "$150,000 by 2026" wrongly reads the " b" of "by"
+  // as a billions suffix and inflates 150,000 into 150 trillion.
   for (const m of lower.matchAll(
-    /\$?(\d+(?:,\d{3})*(?:\.\d+)?)(\s?[kmb])?/g,
+    /\$?(\d+(?:,\d{3})*(?:\.\d+)?)([kmb])?\b/g,
   )) {
     const raw = m[1].replace(/,/g, "");
     let n = parseFloat(raw);
     if (!Number.isFinite(n)) continue;
-    const suffix = (m[2] ?? "").trim().toLowerCase();
+    const suffix = (m[2] ?? "").toLowerCase();
     if (suffix === "k") n *= 1_000;
     else if (suffix === "m") n *= 1_000_000;
     else if (suffix === "b") n *= 1_000_000_000;
@@ -168,13 +171,34 @@ export function greedyPair<T>(
   const aSigs = a.map(sigOf);
   const bSigs = b.map(sigOf);
 
-  // Build all candidate pairs that pass the threshold, sort by score desc.
+  // Inverted index: content word -> indices in `b` that contain it. Two
+  // markets are only worth scoring if they share at least one content word,
+  // so we never pay the full O(|a|*|b|) cost. This lets us widen how many
+  // markets we pull from each exchange without the matcher blowing up.
+  const wordToB = new Map<string, number[]>();
+  for (let j = 0; j < b.length; j++) {
+    for (const w of bSigs[j].words) {
+      let arr = wordToB.get(w);
+      if (!arr) wordToB.set(w, (arr = []));
+      arr.push(j);
+    }
+  }
+
+  // Build candidate pairs that pass the threshold, sort by score desc.
   type Cand = { aIdx: number; bIdx: number; score: number };
   const cands: Cand[] = [];
   for (let i = 0; i < a.length; i++) {
-    for (let j = 0; j < b.length; j++) {
-      const s = similarity(aSigs[i], bSigs[j]);
-      if (s >= threshold) cands.push({ aIdx: i, bIdx: j, score: s });
+    // Gather the set of b-indices that share >=1 content word with a[i].
+    const seen = new Set<number>();
+    for (const w of aSigs[i].words) {
+      const arr = wordToB.get(w);
+      if (!arr) continue;
+      for (const j of arr) {
+        if (seen.has(j)) continue;
+        seen.add(j);
+        const s = similarity(aSigs[i], bSigs[j]);
+        if (s >= threshold) cands.push({ aIdx: i, bIdx: j, score: s });
+      }
     }
   }
   cands.sort((x, y) => y.score - x.score);

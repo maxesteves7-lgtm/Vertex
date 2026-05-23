@@ -74,20 +74,30 @@ export function Screener({
       out = out.filter((r) => r.question.toLowerCase().includes(q));
     }
 
+    // Within whatever sort the user picks, always pin the rows that have a
+    // price on BOTH exchanges to the top — those are the only places a
+    // cross-exchange spread/arb is meaningful — then the single-exchange rows
+    // below. This is the ordering Max asked for.
+    const hasBoth = (r: ScreenerRow) =>
+      typeof r.polymarket?.yesPrice === "number" &&
+      typeof r.kalshi?.yesPrice === "number";
+
+    const byKey = (a: ScreenerRow, b: ScreenerRow): number => {
+      if (sort === "volume") return (b.volume24h ?? 0) - (a.volume24h ?? 0);
+      if (sort === "spread") return (b.spread ?? -1) - (a.spread ?? -1);
+      if (sort === "liquidity") return (b.liquidity ?? 0) - (a.liquidity ?? 0);
+      // closes
+      const ax = a.closesAt?.getTime() ?? Number.POSITIVE_INFINITY;
+      const bx = b.closesAt?.getTime() ?? Number.POSITIVE_INFINITY;
+      return ax - bx;
+    };
+
     const sorted = [...out];
-    if (sort === "volume") {
-      sorted.sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0));
-    } else if (sort === "spread") {
-      sorted.sort((a, b) => (b.spread ?? -1) - (a.spread ?? -1));
-    } else if (sort === "liquidity") {
-      sorted.sort((a, b) => (b.liquidity ?? 0) - (a.liquidity ?? 0));
-    } else if (sort === "closes") {
-      sorted.sort((a, b) => {
-        const ax = a.closesAt?.getTime() ?? Number.POSITIVE_INFINITY;
-        const bx = b.closesAt?.getTime() ?? Number.POSITIVE_INFINITY;
-        return ax - bx;
-      });
-    }
+    sorted.sort((a, b) => {
+      const groupDiff = (hasBoth(b) ? 1 : 0) - (hasBoth(a) ? 1 : 0);
+      if (groupDiff !== 0) return groupDiff;
+      return byKey(a, b);
+    });
     return sorted;
   }, [rows, category, search, sort, favorites, showFavoritesOnly]);
 
