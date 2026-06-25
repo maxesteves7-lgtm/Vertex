@@ -16,8 +16,8 @@ import type {
  */
 export async function loadScreenerRows(_unused = 500): Promise<ScreenerRow[]> {
   const [poly, kalshi] = await Promise.all([
-    safe(() => fetchPolymarketMarkets(1000)),
-    safe(() => fetchKalshiMarkets(2500)),
+    safe(() => fetchPolymarketMarkets(3000)),
+    safe(() => fetchKalshiMarkets(5000)),
   ]);
 
   const { pairs, unmatchedA, unmatchedB } = greedyPair(
@@ -39,15 +39,11 @@ export async function loadScreenerRows(_unused = 500): Promise<ScreenerRow[]> {
     rows.push(buildRow(null, kalshi[j]));
   }
 
-  // Only show rows that (a) have a real tradable price on at least one
-  // exchange and (b) haven't already closed. Markets whose close date is in
-  // the past are events that already happened — they shouldn't appear.
+  // Show every active event. We only drop ones that have already closed —
+  // the user asked explicitly that nothing past its end-date appears.
+  // Price-less events still come through; the card just shows "—".
   const now = Date.now();
   const useful = rows.filter((r) => {
-    const hasPrice =
-      typeof r.polymarket?.yesPrice === "number" ||
-      typeof r.kalshi?.yesPrice === "number";
-    if (!hasPrice) return false;
     if (r.closesAt && r.closesAt.getTime() <= now) return false;
     return true;
   });

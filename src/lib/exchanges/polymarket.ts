@@ -42,44 +42,60 @@ function parseJsonArray(raw: string | undefined): string[] {
 }
 
 const GAMMA_PAGE_SIZE = 500;
+const GAMMA_MAX_RETRIES = 3;
 
-export async function fetchPolymarketMarkets(
-  limit = 1000,
-): Promise<CanonicalMarket[]> {
-  // Polymarket Gamma caps page size around 500, so to capture all the
-  // tradable upcoming markets (not just the top-volume slice) we page through
-  // via the `offset` param, ordered by 24h volume, until we hit `limit` or a
-  // short page signals the end.
-  const data: GammaMarket[] = [];
-  for (let offset = 0; offset < limit; offset += GAMMA_PAGE_SIZE) {
-    const pageSize = Math.min(GAMMA_PAGE_SIZE, limit - offset);
-    const url = new URL(`${GAMMA_BASE}/markets`);
-    url.searchParams.set("active", "true");
-    url.searchParams.set("closed", "false");
-    url.searchParams.set("limit", String(pageSize));
-    url.searchParams.set("offset", String(offset));
-    url.searchParams.set("order", "volume24hr");
-    url.searchParams.set("ascending", "false");
+/** Fetch one page from Gamma with rate-limit / transient-error retry. */
+async function fetchGammaPage(
+  offset: number,
+  pageSize: number,
+): Promise<{ ok: true; data: GammaMarket[] } | { ok: false; status: number }> {
+  const url = new URL(`${GAMMA_BASE}/markets`);
+  url.searchParams.set("active", "true");
+  url.searchParams.set("closed", "false");
+  url.searchParams.set("limit", String(pageSize));
+  url.searchParams.set("offset", String(offset));
+  url.searchParams.set("order", "volume24hr");
+  url.searchParams.set("ascending", "false");
 
+  for (let attempt = 0; attempt <= GAMMA_MAX_RETRIES; attempt++) {
     const res = await fetch(url.toString(), {
       next: { revalidate: 30 },
       headers: { accept: "application/json" },
     });
+    if (res.ok) {
+      return { ok: true, data: (await res.json()) as GammaMarket[] };
+    }
+    // 429 (rate limit) or 5xx — back off and try again
+    if (res.status === 429 || res.status >= 500) {
+      if (attempt === GAMMA_MAX_RETRIES) return { ok: false, status: res.status };
+      const wait = 400 * Math.pow(2, attempt); // 400, 800, 1600ms
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    return { ok: false, status: res.status };
+  }
+  return { ok: false, status: 0 };
+}
 
-    if (!res.ok) {
-      // First page failing is a real error; later pages failing just caps
-      // coverage, so keep whatever we already gathered.
+export async function fetchPolymarketMarkets(
+  limit = 3000,
+): Promise<CanonicalMarket[]> {
+  // Walk Gamma's offset pagination until the API returns a short page
+  // (signalling no more results) or we hit `limit`. Per-page rate-limit
+  // retries live in `fetchGammaPage`. First-page failure throws; later-page
+  // failures cap coverage but keep whatever was already fetched.
+  const data: GammaMarket[] = [];
+  for (let offset = 0; offset < limit; offset += GAMMA_PAGE_SIZE) {
+    const pageSize = Math.min(GAMMA_PAGE_SIZE, limit - offset);
+    const r = await fetchGammaPage(offset, pageSize);
+    if (!r.ok) {
       if (offset === 0) {
-        throw new Error(
-          `Polymarket gamma API returned ${res.status}: ${await res.text().catch(() => "")}`,
-        );
+        throw new Error(`Polymarket gamma API returned ${r.status}`);
       }
       break;
     }
-
-    const page = (await res.json()) as GammaMarket[];
-    data.push(...page);
-    if (page.length < pageSize) break; // no more pages
+    data.push(...r.data);
+    if (r.data.length < pageSize) break; // no more pages
   }
 
   return data.map<CanonicalMarket>((m) => {

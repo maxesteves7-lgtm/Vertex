@@ -59,21 +59,20 @@ type EventsResponse = {
 };
 
 const PAGE_SIZE = 200;
-const MAX_PAGES = 15;
+const MAX_PAGES = 40; // cursor pagination terminates naturally; this is a safety cap
+const KALSHI_MAX_RETRIES = 3;
 
-export async function fetchKalshiMarkets(
-  limit = 2000,
-): Promise<CanonicalMarket[]> {
-  const events: KalshiEvent[] = [];
-  let cursor = "";
+/** Fetch one events page with rate-limit / transient-error retry. */
+async function fetchKalshiPage(
+  cursor: string,
+): Promise<{ ok: true; data: EventsResponse } | { ok: false }> {
+  const url = new URL(`${KALSHI_BASE}/events`);
+  url.searchParams.set("limit", String(PAGE_SIZE));
+  url.searchParams.set("status", "open");
+  url.searchParams.set("with_nested_markets", "true");
+  if (cursor) url.searchParams.set("cursor", cursor);
 
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const url = new URL(`${KALSHI_BASE}/events`);
-    url.searchParams.set("limit", String(PAGE_SIZE));
-    url.searchParams.set("status", "open");
-    url.searchParams.set("with_nested_markets", "true");
-    if (cursor) url.searchParams.set("cursor", cursor);
-
+  for (let attempt = 0; attempt <= KALSHI_MAX_RETRIES; attempt++) {
     let res: Response;
     try {
       res = await fetch(url.toString(), {
@@ -81,14 +80,36 @@ export async function fetchKalshiMarkets(
         headers: { accept: "application/json" },
       });
     } catch {
-      break;
+      if (attempt === KALSHI_MAX_RETRIES) return { ok: false };
+      await new Promise((r) => setTimeout(r, 400 * Math.pow(2, attempt)));
+      continue;
     }
-    if (!res.ok) break;
+    if (res.ok) {
+      return { ok: true, data: (await res.json()) as EventsResponse };
+    }
+    if (res.status === 429 || res.status >= 500) {
+      if (attempt === KALSHI_MAX_RETRIES) return { ok: false };
+      await new Promise((r) => setTimeout(r, 400 * Math.pow(2, attempt)));
+      continue;
+    }
+    return { ok: false };
+  }
+  return { ok: false };
+}
 
-    const data = (await res.json()) as EventsResponse;
-    const page_events = data.events ?? [];
+export async function fetchKalshiMarkets(
+  limit = 5000,
+): Promise<CanonicalMarket[]> {
+  const events: KalshiEvent[] = [];
+  let cursor = "";
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const r = await fetchKalshiPage(cursor);
+    if (!r.ok) break;
+
+    const page_events = r.data.events ?? [];
     events.push(...page_events);
-    cursor = data.cursor ?? "";
+    cursor = r.data.cursor ?? "";
     if (!cursor || page_events.length < PAGE_SIZE) break;
     if (events.length >= limit) break;
   }

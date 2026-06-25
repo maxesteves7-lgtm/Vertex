@@ -1,23 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  /* Predix terminal palette — dark, fintech-cyan primary */
-  --bg: #05070a;
-  --bg-elev: #0b0f14;
-  --bg-row: #0d1117;
-  --border: #1c2128;
-  --border-soft: #161a20;
-  --fg: #e6edf3;
-  --fg-dim: #7d8590;
-  --fg-mute: #4a525c;
+  /* Vertex Terminal — dark mode Robinhood-style palette */
+  --bg: #0f0f0f;
+  --bg-elev: #1a1a1a; /* card surface */
+  --bg-row: #1e1e1e; /* slightly elevated row / hover */
+  --bg-hover: #232323;
+  --border: #262626;
+  --border-soft: #1f1f1f;
+  --fg: #ffffff;
+  --fg-dim: #a3a3a3;
+  --fg-mute: #6b7280;
 
-  --accent-primary: #22d3ee; /* cyan — primary brand */
-  --accent-amber: #fbbf24; /* amber — secondary highlight */
-  --accent-up: #3fb950; /* green */
-  --accent-down: #f85149; /* red */
-  --accent-violet: #a78bfa; /* violet — accents */
-  --accent-buy: #3fb950;
-  --accent-sell: #f85149;
+  --accent-primary: #00c805; /* Robinhood green — yes / brand */
+  --accent-amber: #f59e0b;
+  --accent-up: #00c805; /* yes / up */
+  --accent-down: #ff5000; /* no / down */
+  --accent-violet: #a78bfa;
+  --accent-buy: #00c805;
+  --accent-sell: #ff5000;
+
+  /* Exchange-source badges */
+  --src-polymarket: #6e56cf;
+  --src-kalshi: #14b8a6;
+  --src-both: #f59e0b;
 }
 
 @theme inline {
@@ -31,6 +37,8 @@
   --color-up: var(--accent-up);
   --color-down: var(--accent-down);
   --color-violet: var(--accent-violet);
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas,
     monospace;
 }
@@ -42,9 +50,8 @@ body {
 }
 
 body {
-  font-family: var(--font-mono);
-  font-feature-settings: "tnum" 1, "zero" 1, "cv11" 1;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
 table {
@@ -53,47 +60,34 @@ table {
 
 ::selection {
   background: var(--accent-primary);
-  color: #00131a;
+  color: #002a00;
 }
 
-/* Scrollbar — terminal-thin */
+/* Thin minimal scrollbars */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 0;
+  border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2a313a;
-}
-
-/* Subtle grid texture overlay on body */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(34, 211, 238, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.025) 1px, transparent 1px);
-  background-size: 64px 64px;
-  z-index: 0;
-}
-
-main, header, footer, nav {
-  position: relative;
-  z-index: 1;
+  background: #3a3a3a;
 }
 
 /* Live blinking dot for active feeds */
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 .live-dot {
   display: inline-block;
@@ -102,4 +96,16 @@ main, header, footer, nav {
   border-radius: 50%;
   background: var(--accent-up);
   animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* Card hover lift used across the new feed */
+.card-hover {
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+.card-hover:hover {
+  background-color: var(--bg-hover);
+  border-color: #333;
 }

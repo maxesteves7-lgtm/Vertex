@@ -179,3 +179,102 @@ export function bucketize(
   }
   return "Other";
 }
+
+// ============ Sidebar category tree (display labels + subcategories) ============
+
+/**
+ * Sidebar tree shown in the redesigned home view. `display` is the user-facing
+ * label, `bucket` is the underlying bucketize() category, and `subs` are the
+ * drill-down filters whose `match` regex is tested against question text.
+ */
+export type SubCategoryDef = { display: string; match: RegExp };
+export type CategoryNode = {
+  display: string;
+  bucket: Category;
+  subs: SubCategoryDef[];
+};
+
+export const CATEGORY_TREE: CategoryNode[] = [
+  {
+    display: "Politics",
+    bucket: "Politics",
+    subs: [
+      { display: "Elections", match: /\b(election|primary|caucus|senate|congress|governor|president|presidential)\b/i },
+      { display: "Trump", match: /\btrump\b/i },
+      { display: "World", match: /\b(ukraine|russia|israel|gaza|hamas|iran|china|taiwan|north korea|nato|EU|brexit|putin|netanyahu|zelensky|xi jinping)\b/i },
+      { display: "Policy", match: /\b(supreme court|scotus|tariff|sanction|treaty|cabinet|impeach|legislation|bill|executive order)\b/i },
+    ],
+  },
+  {
+    display: "Sports",
+    bucket: "Sports",
+    subs: [
+      { display: "NBA", match: /\b(NBA|lakers|warriors|celtics|knicks|76ers|sixers|heat|nets|bulls|spurs|mavericks|rockets|thunder|timberwolves|pelicans|grizzlies|blazers|suns|kings|clippers|nuggets|jazz|magic|hornets|wizards|hawks|pistons|cavaliers|cavs|pacers|bucks|raptors)\b/i },
+      { display: "NFL", match: /\b(NFL|super bowl|cowboys|patriots|eagles|steelers|49ers|packers|chiefs|bills|bengals|ravens|browns|jets|dolphins|texans|jaguars|titans|colts|broncos|raiders|chargers|vikings|lions|bears|falcons|buccaneers|saints|panthers|seahawks|rams|commanders)\b/i },
+      { display: "MLB", match: /\b(MLB|world series|yankees|red sox|mets|dodgers|giants|cubs|cardinals|pirates|astros|rangers|mariners|athletics|angels|padres|reds|brewers|twins|royals|white sox|tigers|guardians|marlins|nationals|braves|phillies|orioles|blue jays|rays|rockies|diamondbacks)\b/i },
+      { display: "NHL", match: /\b(NHL|stanley cup|maple leafs|bruins|penguins|capitals|lightning|senators|canadiens|sabres|devils|islanders|flyers|hurricanes|blue jackets|red wings|predators|stars|avalanche|wild|blackhawks|blues|coyotes|golden knights|sharks|ducks|flames|oilers|canucks|kraken)\b/i },
+      { display: "Soccer", match: /\b(soccer|MLS|EPL|premier league|champions league|world cup|UEFA|FIFA|la liga|bundesliga|serie A|arsenal|chelsea|liverpool|manchester|barcelona|real madrid|juventus|bayern|PSG)\b/i },
+      { display: "Tennis", match: /\b(ATP|WTA|wimbledon|US open|australian open|french open|roland garros|tennis|djokovic|alcaraz|sinner|swiatek|sabalenka)\b/i },
+      { display: "MMA / UFC", match: /\b(UFC|MMA|fight night|boxing)\b/i },
+      { display: "Golf", match: /\b(PGA|LIV golf|the masters|ryder cup|fedex cup|golf)\b/i },
+      { display: "F1 / Racing", match: /\b(F1|formula 1|NASCAR|moto\s?GP|indycar|grand prix)\b/i },
+      { display: "Esports", match: /\b(LoL|league of legends|valorant|counter\s?strike|CSGO|dota|esports|the international|VCT)\b/i },
+      { display: "Cricket", match: /\b(IPL|cricket|T20|ODI)\b/i },
+    ],
+  },
+  {
+    display: "Finance",
+    bucket: "Macro",
+    subs: [
+      { display: "Fed / Rates", match: /\b(fed|FOMC|federal reserve|interest rate|rate cut|rate hike)\b/i },
+      { display: "Inflation", match: /\b(inflation|CPI|PPI|PCE)\b/i },
+      { display: "Stocks", match: /\b(stock market|S\s?&\s?P 500|dow jones|nasdaq|russell|VIX|earnings|IPO)\b/i },
+      { display: "Recession / Jobs", match: /\b(recession|unemployment|jobs report|payroll|nonfarm|GDP)\b/i },
+      { display: "Commodities", match: /\b(gas price|oil price|brent|WTI|crude|opec|gold|silver)\b/i },
+    ],
+  },
+  {
+    display: "Crypto",
+    bucket: "Crypto",
+    subs: [
+      { display: "Bitcoin", match: /\b(bitcoin|BTC)\b/i },
+      { display: "Ethereum", match: /\b(ethereum|ETH)\b/i },
+      { display: "Solana", match: /\b(solana|SOL)\b/i },
+      { display: "Other coins", match: /\b(cardano|ADA|ripple|XRP|doge|dogecoin|shib|shiba|memecoin|meme coin|altcoin)\b/i },
+      { display: "Exchanges / Stables", match: /\b(coinbase|binance|kraken|stablecoin|stable coin|USDT|USDC|defi|NFT)\b/i },
+    ],
+  },
+  {
+    display: "Science & Tech",
+    bucket: "AI/Tech",
+    subs: [
+      { display: "AI", match: /\b(AI|artificial intelligence|AGI|GPT|LLM|openai|anthropic|claude|gemini)\b/i },
+      { display: "Big Tech", match: /\b(apple|google|microsoft|meta|amazon|nvidia|tesla)\b/i },
+      { display: "Space", match: /\b(spacex|starship|mars|nasa|moon|rocket|satellite)\b/i },
+      { display: "Robotics / Autos", match: /\b(robotics|robot|waymo|self\s?driving|autonomous vehicle)\b/i },
+    ],
+  },
+  {
+    display: "Entertainment",
+    bucket: "Culture",
+    subs: [
+      { display: "Awards", match: /\b(oscar|academy award|grammy|emmy|tony award|golden globe|cannes|nobel prize|pulitzer)\b/i },
+      { display: "Movies / TV", match: /\b(movie|film|netflix|hbo|disney|box office|imdb|rotten tomatoes|reality tv|bachelor|survivor|love island)\b/i },
+      { display: "Music", match: /\b(taylor swift|beyonce|kanye|drake|kendrick|album|song|chart|spotify|coachella|met gala)\b/i },
+      { display: "Celebrity", match: /\b(elon musk|musk|tweet|kardashian|celebrity|influencer)\b/i },
+    ],
+  },
+  { display: "Weather", bucket: "Weather", subs: [] },
+  { display: "Health", bucket: "Health", subs: [] },
+  { display: "Other", bucket: "Other", subs: [] },
+];
+
+/** Classify a row into its subcategory within its bucket. Null if none match. */
+export function subBucketize(bucket: Category, question: string): string | null {
+  const node = CATEGORY_TREE.find((n) => n.bucket === bucket);
+  if (!node) return null;
+  for (const s of node.subs) {
+    if (s.match.test(question)) return s.display;
+  }
+  return null;
+}
