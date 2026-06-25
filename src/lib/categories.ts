@@ -246,11 +246,112 @@ const RULES: Array<[RegExp, Category]> = [
     /\b(opening weekend|gross|domestic gross|worldwide gross|box office|streaming numbers|viewers|ratings|nielsen)\b/i,
     "Culture",
   ],
+
+  // ===== EVEN BROADER GAP-FILLERS (third pass) =====
+  // The patterns above still leave a long tail. Below are the cheapest, most
+  // high-recall catches we can write to mop up whatever's still bucketed as
+  // Other. Order matters — strongest signals first.
+
+  // International elections / governments / world leaders → Politics
+  [
+    /\b(german|france|french|italian|spanish|UK|british|indian|brazilian|argentin|mexican|canadian|japanese|korean|australian|nigerian|saudi|turkish|egyptian|pakistani|indonesian|vietnamese|thai|chilean|colombian|peruvian|cuban|venezuelan|polish|ukrainian|russian|chinese|taiwanese|israeli|palestinian|lebanese|syrian|iraqi|iranian|afghan|yemen|ethiopian|kenyan|ghan(a|aian))\s+(election|government|parliament|chancellor|presiden|prime minister|opposition|polls|coalition|coup|cabinet|leader)/i,
+    "Politics",
+  ],
+  [
+    /\b(modi|macron|merkel|scholz|meloni|sunak|starmer|johnson|truss|albanese|lula|bolsonaro|milei|maduro|amlo|sheinbaum|orban|erdogan|al[-\s]sissi|mbs|salman|kishida|yoon|kim jong|xi jinping|putin|zelensky|netanyahu|abbas|sinwar|nasrallah|khamenei|raisi)\b/i,
+    "Politics",
+  ],
+  [
+    /\b(coup|junta|regime change|civil war|insurg|paramilitar|guerrilla|cartel|mafia|opposition leader|exile|asylum seeker|coup d'?etat|state of emergency|martial law)\b/i,
+    "Politics",
+  ],
+  // US gov/agency acronyms catch
+  [
+    /\b(EPA|SEC|FCC|FTC|IRS|TSA|ICE|DHS|VA|HUD|DOD|pentagon|state department|treasury department)\b/i,
+    "Politics",
+  ],
+
+  // Olympics / Paralympics / extreme sports / minor sports → Sports
+  [
+    /\b(olympic|olympics|paralympic|paralympics|olympia|summer games|winter games|gold medal|silver medal|bronze medal|medal count|podium|host city|IOC)\b/i,
+    "Sports",
+  ],
+  [
+    /\b(swim|swimmer|freestyle|butterfly|backstroke|breaststroke|sprint|hurdles|decathlon|heptathlon|long jump|high jump|pole vault|shot put|discus|javelin|gymnast|figure skat|speed skat|ski|skier|skiing|snowboard|biathlon|bobsled|luge|curling|rowing|cycling|peloton|tour de france|giro|vuelta|cricket|rugby|aussie rules|AFL|NRL|cricket world cup|netball|handball|water polo|polo|equestrian|sailing|surfing|skateboard|chess|checkers|backgammon|poker|world series of poker|WSOP)\b/i,
+    "Sports",
+  ],
+  // Specific star athletes (broad)
+  [
+    /\b(messi|ronaldo|mbapp[ée]|haaland|neymar|salah|de bruyne|son heung|kane|lewandowski|griezmann|modric|benzema|martinez|alvarez|caicedo|bellingham|saka|vinicius|rodrygo|valverde|kvaratskhelia|osimhen|lautaro|gvardiol|hojlund|kobbie mainoo|garnacho|alcaraz|sinner|djokovic|nadal|federer|swiatek|sabalenka|gauff|rybakina|jabeur|pegula|tiafoe|fritz|shelton|musetti|rune|tsitsipas|medvedev|zverev|rublev|hurkacz|berrettini|de mina|jokic|embiid|giannis|antetokounmpo|luka|doncic|tatum|brown|holiday|porzingis|durant|booker|beal|harden|kawhi|leonard|paul george|lebron|davis|ja morant|zion|edwards|towns|gobert|murray|jamal murray|jokic|aaron rodgers|patrick mahomes|josh allen|joe burrow|jayden daniels|caleb williams|drake maye|lamar jackson|kyler murray|trevor lawrence|justin herbert|jalen hurts|dak prescott|matt stafford|cousins|geno smith|tua tagovailoa|brock purdy|christian mccaffrey|saquon barkley|derrick henry|nick chubb|justin jefferson|ja'?marr chase|tyreek hill|cee?dee lamb|davante adams|deebo samuel|stefon diggs|aaron judge|shohei ohtani|mike trout|mookie betts|freddie freeman|juan soto|ronald acuna|kyle tucker|jose ramirez|jose altuve|bryce harper|trea turner|gerrit cole|spencer strider|paul skenes|shota imanaga|yoshinobu yamamoto|connor mcdavid|leon draisaitl|auston matthews|nathan mackinnon|nikita kucherov|cale makar|elias pettersson|connor bedard|sidney crosby|alex ovechkin|conor mcgregor|jon jones|israel adesanya|alex pereira|max holloway|charles oliveira|sean strickland|ilia topuria|dustin poirier|justin gaethje|francis ngannou|tyson fury|deontay wilder|anthony joshua|oleksandr usyk|canelo|david benavidez|shakur stevenson|terence crawford|ryan garcia|gervonta davis|naoya inoue)\b/i,
+    "Sports",
+  ],
+  [
+    /\b(coach|manager|head coach|hc|interim coach|firing|fired|hired|signing|signs|trade|traded|drafted|draft pick|first round pick|cap space|free agent|free agency|tampering|tampered|extension|contract extension|salary|salary cap|holdout|hold-?out|retire|retirement|return|comeback|injured reserve|IR|day-to-?day|questionable|probable|game-?time decision|inactive)\b/i,
+    "Sports",
+  ],
+  // Generic "Will [team-shaped] win/beat/defeat" — capitalized noun + sports verb
+  [
+    /\b(beat|defeat|cover|win|sweep|advance|eliminate|knockout|outlast|overtake|outscore)\b.{0,40}\b(today|tonight|tomorrow|this week|this season)\b/i,
+    "Sports",
+  ],
+
+  // Companies / CEOs / tech products beyond the prior list → AI/Tech
+  [
+    /\b(reddit|snap|snapchat|pinterest|shopify|salesforce|oracle|adobe|intuit|paypal|stripe|spacex|starlink|tesla|rivian|lucid|byd|nio|xpeng|ford|gm|gm cruise|nvidia|amd|intel|qualcomm|samsung|sony|netflix|hulu|disney\+|paramount\+|peacock|airbnb|uber|lyft|doordash|instacart|robinhood|coinbase|palantir|databricks|openai|anthropic|x ai|xai|grok|midjourney|runway|character\.ai|hugging face|notion|linear|figma|canva|atlassian|github|gitlab|cloudflare|datadog|snowflake|mongodb|elastic|servicenow|workday|zoom|slack|asana|trello|monday\.com)\b/i,
+    "AI/Tech",
+  ],
+  [
+    /\b(CEO of|step down as CEO|resign as CEO|fire CEO|replace CEO|new CEO|next CEO|interim CEO|founder|cofounder|co-?founder|chairman|chairwoman|chairperson|board member|board of directors|product launch|ship date|ship in|release date|version \d|v\d+(\.\d+)?|beta|alpha|GA release|general availability|API release|model release|trained model|frontier model)\b/i,
+    "AI/Tech",
+  ],
+
+  // Crypto altcoins / DeFi protocols → Crypto
+  [
+    /\b(LTC|litecoin|polkadot|DOT|avalanche|AVAX|MATIC|polygon|chainlink|LINK|uniswap|UNI|aave|compound|sushi|maker|MKR|cosmos|ATOM|near protocol|near|aptos|APT|sui|hbar|hedera|stellar|XLM|tron|TRX|monero|XMR|zcash|ZEC|filecoin|FIL|theta|kaspa|KAS|bittensor|TAO|render|RNDR|pepe|pepecoin|wif|dogwifhat|bonk|floki|memecoin|presale|launchpad|liquidity pool|liquidity pair|TVL|total value locked|stable depeg|de-?peg|bridge hack|rug pull|rugpull)\b/i,
+    "Crypto",
+  ],
+
+  // More music / TV / pop culture → Culture
+  [
+    /\b(sabrina carpenter|olivia rodrigo|chappell roan|charli xcx|charli\s?xcx|doja cat|sza|billie eilish|ariana grande|dua lipa|rihanna|adele|harry styles|bad bunny|karol g|peso pluma|j balvin|shakira|bts|blackpink|jungkook|jimin|jin|stray kids|newjeans|ITZY|aespa|tyler the creator|tyler, the creator|the weeknd|frank ocean|kanye|kid cudi|young thug|future|metro boomin|playboi carti|gunna|21 savage|lil baby|nicki minaj|cardi b|megan thee stallion|ice spice|latto|saweetie|kim petras|lana del rey|lorde|mitski|phoebe bridgers|boygenius|maggie rogers|HBO max|max|apple tv|amazon prime|prime video|paramount\+|paramount plus|peacock|tubi|crunchyroll|criterion|A24|blumhouse|warner bros|warner brothers|paramount pictures|universal pictures|columbia pictures|legendary|sony pictures|mgm|amc|cinemark|regal|wonka|barbie|oppenheimer|dune|avatar|the batman|killers of the flower moon|past lives|anatomy of a fall|poor things|zone of interest|holdovers|tár|tar movie|everything everywhere|the bear|succession|white lotus|euphoria|the boys|wednesday|outer banks|emily in paris|bridgerton|cobra kai|never have i ever|severance|silo|reacher|jack ryan|the marvelous mrs maisel|ted lasso|abbott elementary|saturday night live|SNL|the office|parks and rec|seinfeld|friends|reunion|special|miniseries|limited series)\b/i,
+    "Culture",
+  ],
+
+  // Concerts / tours / festivals / venues → Culture
+  [
+    /\b(tour|world tour|setlist|tickets sold|ticket sales|stadium|arena|sold out|coachella|lollapalooza|bonnaroo|burning man|sxsw|south by southwest|tribeca|toronto film festival|venice film festival|sundance|telluride|comic-?con|met gala|VMA|video music awards)\b/i,
+    "Culture",
+  ],
+
+  // Stocks / IPOs without ticker syntax → Macro
+  [
+    /\b(market cap|all-?time high|ATH|fifty-?two week high|52-?week high|52-?week low|delist|de-?list|trading halt|circuit breaker|short report|short seller|put options|call options|implied volatility|gamma squeeze|options chain|expiry|expiration|exercise|notional|cash settlement)\b/i,
+    "Macro",
+  ],
+  // Major non-US central banks
+  [
+    /\b(ECB|european central bank|BOE|bank of england|BOJ|bank of japan|PBOC|peoples bank of china|RBA|reserve bank of australia|RBI|reserve bank of india|bank of canada|swiss national bank|SNB|riksbank|norges bank|banxico)\b/i,
+    "Macro",
+  ],
+
+  // Disease outbreaks / FDA actions → Health
+  [
+    /\b(measles outbreak|polio|mers|chikungun|dengue|malaria|tuberculosis|TB outbreak|monkeypox|mpox|hantavirus|listeria|salmonella|e coli|E\.\s?coli|food poison|food recall|product recall|FDA recall|class \w recall)\b/i,
+    "Health",
+  ],
+
+  // Earthquakes / volcano / natural disaster → Weather
+  [
+    /\b(earthquake|magnitude \d|aftershock|tsunami|volcano|volcanic|eruption|lava|ash plume|asteroid|meteor|solar flare|geomagnetic storm|aurora|solar eclipse|lunar eclipse|northern lights)\b/i,
+    "Weather",
+  ],
 ];
 
 /**
  * Map a free-form category string + question text to one of our buckets.
  * We test the combined haystack against ordered rules; first match wins.
+ * If no rule matches, fall through to a heuristic guess — by policy we
+ * NEVER return "Other" from this function. Every market gets a category.
  */
 export function bucketize(
   category: string | null | undefined,
@@ -260,7 +361,96 @@ export function bucketize(
   for (const [re, bucket] of RULES) {
     if (re.test(haystack)) return bucket;
   }
-  return "Other";
+  return heuristicGuess(haystack);
+}
+
+/**
+ * Final-resort classifier. The rules above carry a sharp signal; this is
+ * the soft net. Each branch checks for a family of features (country names,
+ * monetary signals, sports verbs, etc.) and routes to the most plausible
+ * real category. Default falls to Culture, which absorbs the long tail of
+ * "Will [random celebrity / random object / random event] happen?" markets.
+ */
+function heuristicGuess(haystack: string): Category {
+  const t = haystack.toLowerCase();
+
+  // Politics-ish: country/region words, vote/policy phrasing, world leaders
+  if (
+    /\b(elect|election|vote|voter|polled|polls?|approval|government|president|prime minister|chancellor|policy|policies|treaty|sanction|tariff|geopolitic|war|invasion|peace|ceasefire|hostage|prisoner|protest|riot|coup|regime|leader|reelect|resign|impeach|incumbent|legislat|congress|senate|parliament)\b/.test(
+      t,
+    )
+  ) {
+    return "Politics";
+  }
+  if (
+    /\b(germany|france|italy|spain|britain|UK|england|scotland|wales|ireland|netherlands|belgium|sweden|norway|denmark|finland|poland|ukraine|russia|china|taiwan|hong kong|india|pakistan|bangladesh|sri lanka|japan|south korea|north korea|indonesia|philippines|vietnam|thailand|malaysia|singapore|australia|new zealand|brazil|argentina|mexico|chile|peru|colombia|venezuela|cuba|haiti|jamaica|canada|nigeria|south africa|kenya|ethiopia|ghana|egypt|morocco|algeria|tunisia|libya|sudan|saudi arabia|UAE|united arab emirates|qatar|israel|palestine|gaza|west bank|lebanon|syria|iraq|iran|afghanistan|yemen|turkey|greece)\b/.test(
+      t,
+    )
+  ) {
+    return "Politics";
+  }
+
+  // Crypto-ish
+  if (
+    /\b(coin|token|protocol|defi|web3|chain|airdrop|tokenized|onchain|on-chain|wallet|gas fee|mempool|nft|stake|staking|validator|miner|hashrate|halving|hodl|altcoin|memecoin|stablecoin)\b/.test(
+      t,
+    )
+  ) {
+    return "Crypto";
+  }
+
+  // Sports-ish — actions, scoring, brackets
+  if (
+    /\b(beat|defeat|score|goal|points|yards|rebounds|assists|home run|touchdown|knockout|finalist|championship|champion|league|match|game|tournament|race|sprint|marathon|qualif|qualifier|semifinal|final|round \d|stage \d|leg \d|set \d|frame \d|wicket|over \d+\.?\d*|under \d+\.?\d*|vs\.?|versus|outscore|outshoot|outdraw)\b/.test(
+      t,
+    )
+  ) {
+    return "Sports";
+  }
+
+  // Macro / finance-ish
+  if (
+    /(\$|%|bps|basis point|stock|equity|equities|bond|yield|rate|inflation|deflation|earnings|revenue|profit|loss|bankrupt|valuation|billion|trillion|million|economy|recession|GDP|payroll|jobs|unemployment|index|fund|ETF|ETN|treasury|treasuries|sovereign|debt|commodity|gold|silver|copper|crude|oil|brent|natural gas|wheat|corn|soybean|cattle|fed|FOMC|central bank)/.test(
+      t,
+    )
+  ) {
+    return "Macro";
+  }
+
+  // AI/Tech-ish
+  if (
+    /\b(AI|model|GPT|LLM|agent|app|launch|release|product|company|founder|CEO|startup|tech|software|hardware|chip|cloud|browser|operating system|os|platform|update|version|API|SDK|robotics|robot|drone|autonomous|driverless)\b/.test(
+      t,
+    )
+  ) {
+    return "AI/Tech";
+  }
+
+  // Health-ish
+  if (
+    /\b(virus|disease|patient|treatment|drug|medication|surgery|doctor|hospital|epidemic|outbreak|vaccine|symptom|cure|approval|trial|clinical)\b/.test(
+      t,
+    )
+  ) {
+    return "Health";
+  }
+
+  // Weather-ish
+  if (
+    /\b(temperature|weather|storm|rain|snow|wind|heat|cold|hurricane|tornado|tropical|forecast|degrees|°|fahrenheit|celsius|sea level|drought|flood)\b/.test(
+      t,
+    )
+  ) {
+    return "Weather";
+  }
+
+  // Money / "above $X" / "reach $X" phrasing — usually a market price or
+  // valuation question → Macro
+  if (/\$\s?\d/.test(t)) return "Macro";
+
+  // "Will [proper noun(s)] do something" with a year or question mark — the
+  // long tail of cultural/event markets — bucket as Culture.
+  return "Culture";
 }
 
 // ============ Sidebar category tree (display labels + subcategories) ============
@@ -349,7 +539,9 @@ export const CATEGORY_TREE: CategoryNode[] = [
   },
   { display: "Weather", bucket: "Weather", subs: [] },
   { display: "Health", bucket: "Health", subs: [] },
-  { display: "Other", bucket: "Other", subs: [] },
+  // "Other" intentionally omitted — bucketize() now uses a heuristic
+  // fallback so no row ever ends up here. If anything ever did, it'd be
+  // invisible in the sidebar but still findable via search.
 ];
 
 /** Classify a row into its subcategory within its bucket. Null if none match. */
