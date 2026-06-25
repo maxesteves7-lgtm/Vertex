@@ -6,7 +6,7 @@ import type {
   NewsItem,
   TradeEvent,
 } from "@/lib/exchanges/types";
-import { fmtPct, fmtUsd, fmtRelativeDate } from "@/lib/format";
+import { fmtPct, fmtUsd, fmtRelativeDate, fmtSmartTime } from "@/lib/format";
 import { PriceChart } from "./PriceChart";
 import { AlertButton } from "./AlertButton";
 
@@ -170,7 +170,7 @@ export function MarketDetailPanel({
                       <span className="text-[var(--accent-primary)]">
                         {n.source}
                       </span>
-                      <span>{fmtRelativeTime(n.timestamp)}</span>
+                      <span>{fmtSmartTime(n.timestamp)}</span>
                     </div>
                     <a
                       href={n.url}
@@ -226,7 +226,7 @@ export function MarketDetailPanel({
                       className="border-t border-[var(--border-soft)]"
                     >
                       <td className="py-1 text-[var(--fg-dim)]">
-                        {fmtRelativeTime(t.timestamp)}
+                        {fmtSmartTime(t.timestamp)}
                       </td>
                       <td className="py-1">
                         <span
@@ -462,10 +462,4 @@ function leaderLabelFromQuestion(q: string): string {
   return q;
 }
 
-function fmtRelativeTime(d: Date): string {
-  const diffSec = Math.round((Date.now() - d.getTime()) / 1000);
-  if (diffSec < 60) return `${diffSec}s ago`;
-  if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
-  if (diffSec < 86400) return `${Math.round(diffSec / 3600)}h ago`;
-  return `${Math.round(diffSec / 86400)}d ago`;
-}
+// fmtRelativeTime removed — now using fmtSmartTime from lib/format

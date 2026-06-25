@@ -140,6 +140,67 @@ export async function fetchPolymarketMarkets(
   });
 }
 
+// ============ Resolution tracker ============
+
+export type ResolvedMarket = {
+  id: string;
+  question: string;
+  category: string | null;
+  endDate: Date | null;
+  /** "YES" / "NO" / "UNRESOLVED" — derived from final outcomePrices */
+  outcome: "YES" | "NO" | "UNRESOLVED";
+  url: string;
+  volume24h: number | null;
+};
+
+/**
+ * Pull the most recently resolved Polymarket markets. Uses the same Gamma
+ * /markets endpoint but with closed=true and order=endDate desc.
+ */
+export async function fetchPolymarketResolved(
+  limit = 100,
+): Promise<ResolvedMarket[]> {
+  const url = new URL(`${GAMMA_BASE}/markets`);
+  url.searchParams.set("closed", "true");
+  url.searchParams.set("limit", String(Math.min(limit, 500)));
+  url.searchParams.set("order", "endDate");
+  url.searchParams.set("ascending", "false");
+
+  const res = await fetch(url.toString(), {
+    next: { revalidate: 120 },
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) return [];
+
+  const data = (await res.json()) as GammaMarket[];
+  return data
+    .map<ResolvedMarket>((m) => {
+      const prices = parseJsonArray(m.outcomePrices).map((p) => parseFloat(p));
+      const outcomes = parseJsonArray(m.outcomes);
+      const yesIdx = outcomes.findIndex((o) => /yes/i.test(o));
+      const yesPrice = yesIdx >= 0 ? prices[yesIdx] : prices[0];
+      const noPrice =
+        outcomes.findIndex((o) => /no/i.test(o)) >= 0
+          ? prices[outcomes.findIndex((o) => /no/i.test(o))]
+          : prices[1];
+      let outcome: "YES" | "NO" | "UNRESOLVED" = "UNRESOLVED";
+      if (Number.isFinite(yesPrice) && yesPrice >= 0.99) outcome = "YES";
+      else if (Number.isFinite(noPrice) && noPrice >= 0.99) outcome = "NO";
+      else if (Number.isFinite(yesPrice) && yesPrice <= 0.01) outcome = "NO";
+
+      return {
+        id: m.id,
+        question: m.question,
+        category: m.category ?? null,
+        endDate: m.endDate ? new Date(m.endDate) : null,
+        outcome,
+        url: `https://polymarket.com/event/${m.slug}`,
+        volume24h: safeNumber(m.volume24hr),
+      };
+    })
+    .filter((m) => m.question); // skip rows without a question
+}
+
 // ============ Price history (CLOB) ============
 
 const CLOB_BASE = "https://clob.polymarket.com";

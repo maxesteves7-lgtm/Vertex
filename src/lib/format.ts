@@ -35,3 +35,34 @@ export function fmtRelativeDate(d: Date | null | undefined): string {
   if (days >= 365) return `${Math.round(days / 365)}y`;
   return `${Math.abs(days)}d ago`;
 }
+
+/**
+ * Smart trade/news timestamp.
+ *  - under 60 minutes → exact clock time, e.g. "2:47 PM"
+ *  - 1 hour to 7 days → day + time, e.g. "Mon 2:47 PM"
+ *  - over 7 days     → full date + time, e.g. "Jun 12, 2:47 PM"
+ * Always rendered in the user's local timezone.
+ */
+export function fmtSmartTime(d: Date | null | undefined): string {
+  if (!d) return DASH;
+  const now = Date.now();
+  const diffMs = now - d.getTime();
+  const oneHour = 60 * 60 * 1000;
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+  const time = d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (diffMs < oneHour) return time;
+  if (diffMs < sevenDays) {
+    const day = d.toLocaleDateString(undefined, { weekday: "short" });
+    return `${day} ${time}`;
+  }
+  const date = d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+  return `${date}, ${time}`;
+}

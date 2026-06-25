@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { NewsItem } from "@/lib/exchanges/types";
 import type { Category } from "@/lib/categories";
+import { fmtSmartTime } from "@/lib/format";
 
 type MarketRef = { id: string; question: string; bucket: Category };
 
@@ -84,7 +85,7 @@ export function NewsFeed({
                   <span className="text-[var(--accent-primary)] font-semibold">
                     {n.source}
                   </span>
-                  <span className="ml-2">{fmtRelativeTime(n.timestamp)}</span>
+                  <span className="ml-2">{fmtSmartTime(n.timestamp)}</span>
                 </span>
                 {n.priceImpact !== undefined && (
                   <span
@@ -149,10 +150,4 @@ export function NewsFeed({
   );
 }
 
-function fmtRelativeTime(d: Date): string {
-  const diffSec = Math.round((Date.now() - d.getTime()) / 1000);
-  if (diffSec < 60) return `${diffSec}s ago`;
-  if (diffSec < 3600) return `${Math.round(diffSec / 60)}m ago`;
-  if (diffSec < 86400) return `${Math.round(diffSec / 3600)}h ago`;
-  return `${Math.round(diffSec / 86400)}d ago`;
-}
+// fmtRelativeTime removed — now using fmtSmartTime from lib/format

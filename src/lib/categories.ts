@@ -163,6 +163,89 @@ const RULES: Array<[RegExp, Category]> = [
     /\b(oscar|academy award|grammy|emmy|tony award|golden globe|cannes|movie|film|netflix|hbo|disney|spotify|taylor swift|beyonce|kanye|drake|kendrick|elon musk|musk|tweet|x\.com|tiktok|instagram|youtube|streamer|influencer|celebrity|album|song|chart|imdb|rotten tomatoes|metacritic|box office|book sales|new york times bestseller|nobel prize|pulitzer|met gala|coachella|super bowl halftime|eurovision|miss universe|reality tv|the bachelor|survivor|love island)\b/i,
     "Culture",
   ],
+
+  // ===== SOFTER FALLBACKS =====
+  // The rules above lock in the high-confidence cases. The rules below sweep
+  // the long tail so events don't fall into "Other" just because they're
+  // phrased unusually (Will / number / threshold / above-or-below / etc.).
+
+  // Politics — looser tier
+  [
+    /\b(approve|approval rating|veto|filibuster|debate|debate stage|polling|poll|polls|polled|incumbent|reelect|re-elect|run for|drop out|dropout|nominee|nominat|candidate|swing state|battleground|electoral|electoral college|first term|second term|term limit|midterm|primary debate|hush money|indict|indictment|prosecut|convict|guilty|acquit|verdict|jury|grand jury|trial|deposition|subpoena|witness|conspiracy|bribe|whistleblow|leak|leaked|classified|fbi|cia|nsa|doj|department of justice|gerrymander|redistrict|ballot|referendum|abortion|roe v wade|gun control|second amendment|first amendment|immigration|border|asylum|deport|migrant|visa|H-?1B)\b/i,
+    "Politics",
+  ],
+
+  // Macro / Finance — looser tier
+  [
+    /\b(basis points|bps|rate decision|rate hold|rate pause|debt ceiling|deficit|surplus|budget|spending bill|continuing resolution|shutdown|government shutdown|bailout|merger|acquisition|M\s?&\s?A|spin-?off|buyback|dividend|short squeeze|short interest|day trading|after hours|premarket|consumer confidence|retail sales|durable goods|housing starts|new home sales|existing home sales|jobless claims|wage growth|labor market|tightening|easing|hawkish|dovish|yield curve|inversion|tnx|tlt|treasuries|junk bond|investment grade|credit spread|euro|yen|yuan|dollar index|DXY|currency|forex)\b/i,
+    "Macro",
+  ],
+
+  // Crypto — looser tier
+  [
+    /\b(altcoin|hodl|halving|mining|miner|hash rate|hashrate|ledger|wallet|seed phrase|gas fee|gwei|cold storage|cold wallet|hot wallet|defi|nft|tokenomics|airdrop|smart contract|spot ETF|crypto ETF|BlackRock ETF|grayscale|tether|circle|FTX|SBF|sam bankman|coinbase listing|launchpad)\b/i,
+    "Crypto",
+  ],
+
+  // AI/Tech — looser tier
+  [
+    /\b(machine learning|deep learning|model card|benchmark|benchmar|MMLU|HumanEval|SWE-?bench|training run|RLHF|fine-?tun|inference|transformer|diffusion|stable diffusion|midjourney|sora|veo|imagen|grok|copilot|cursor|github copilot|datacenter|data center|GPU|H100|H200|B200|MI300|chip ban|semiconductor|TSMC|ARM|founders fund|y combinator|YC|series A|series B|series C|valuation|unicorn|tech IPO|cybersecurity|ransomware|data breach|hack|hacker|hacked|zero day|0\s?day|quantum|gene|crispr|genome|biotech|brain chip|neuralink)\b/i,
+    "AI/Tech",
+  ],
+
+  // Sports — looser tier
+  [
+    /\b(MVP|rookie of the year|defensive player|coach of the year|player of the week|hall of fame|all-?star|all star|comeback player|injury|injured|out for season|won|wins|loses|defeat|defeats|win the|win by|cover the spread|sweep|swept|series|game \d|halftime score|final score|over\/under|moneyline|prop bet|prop market|first to score|first goal|first basket|home run|touchdown|interception|knockout|TKO|submission|decision|points scored|yards|rushing|passing|points|goals|assists|hat trick|no-?hitter|perfect game|grand slam|breakaway|odds boost|parlay)\b/i,
+    "Sports",
+  ],
+
+  // Culture / entertainment — looser tier
+  [
+    /\b(podcast|joe rogan|JRE|kim kardashian|kanye west|jeff bezos|mr beast|mrbeast|youtuber|tiktoker|streamer|kai cenat|adin ross|hasan|ishowspeed|logan paul|jake paul|paul brothers|wedding|engaged|divorce|breakup|baby|pregnant|child|adopt|memoir|biography|biopic|series finale|reboot|spinoff|prequel|sequel|trilogy|cinematic universe|MCU|marvel|DCEU|DC|star wars|harry potter|game of thrones|breaking bad|stranger things|squid game|last of us|tv show|book deal|book sales|bestseller|new york times bestseller|grammy nominat|oscar nominat|emmy nominat)\b/i,
+    "Culture",
+  ],
+
+  // Weather / climate — looser tier
+  [
+    /\b(climate|global warming|sea level|ice cap|glacier|polar vortex|wind speed|storm surge|category \d hurricane|cat-?\d hurricane|tropical storm|tropical depression|jet stream|atmospheric river|air quality|AQI|smog|wildfire|fire season)\b/i,
+    "Weather",
+  ],
+
+  // Health — looser tier
+  [
+    /\b(drug approval|clinical trial|phase \d trial|phase[123]\b|biosimilar|generic drug|patent expir|insurance|medicare|medicaid|ACA|obamacare|public option|single payer|surgeon general|CDC|NIH|WHO|world health|hospital|emergency room|ICU|nursing shortage|nurse strike|opioid|fentanyl|overdose|addiction|sober|mental health|suicide rate|life expectancy|obesity|diabetes|heart disease|stroke|cancer screening|cancer trial|GLP-?1|ozempic|wegovy|mounjaro|insulin price)\b/i,
+    "Health",
+  ],
+
+  // Sports / events — generic team match phrasing missed earlier
+  [
+    /\b(vs\.?|@)\s+[A-Z][a-z]+/, // "Lakers vs Celtics", "Yankees @ Red Sox"
+    "Sports",
+  ],
+
+  // Anything with "team" / "league" / "season" / "playoff" — Sports
+  [
+    /\b(team|league|season opener|opening day|playoff seed|wild card|champion|runner-?up|finalist|finalists)\b/i,
+    "Sports",
+  ],
+
+  // Trump / Biden / political figure mentioned anywhere → Politics
+  [
+    /\b(trump|biden|harris|obama|clinton|romney|desantis|newsom|vance|pence|musk for|musk runs|musk president|RFK|kennedy|sanders|warren|AOC|MTG|hakeem jeffries|chuck schumer|mitch mcconnell|kevin mccarthy|mike johnson|nancy pelosi|john thune|jd vance)\b/i,
+    "Politics",
+  ],
+
+  // "Will X reach $Y" with stock-ticker-shaped tokens → Macro
+  [
+    /\$[A-Z]{1,5}\b/, // e.g. $TSLA, $AAPL, $SPY
+    "Macro",
+  ],
+
+  // Box office, gross, opening weekend → Culture
+  [
+    /\b(opening weekend|gross|domestic gross|worldwide gross|box office|streaming numbers|viewers|ratings|nielsen)\b/i,
+    "Culture",
+  ],
 ];
 
 /**
