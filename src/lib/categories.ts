@@ -349,19 +349,119 @@ const RULES: Array<[RegExp, Category]> = [
 
 /**
  * Map a free-form category string + question text to one of our buckets.
- * We test the combined haystack against ordered rules; first match wins.
- * If no rule matches, fall through to a heuristic guess — by policy we
- * NEVER return "Other" from this function. Every market gets a category.
+ *
+ * Priority order:
+ *  1. Trust the source-exchange category if it maps cleanly (Polymarket's
+ *     "Geopolitics" → Politics, Kalshi's "World" → Politics, etc.). The
+ *     exchanges already classify their own markets; respecting that label
+ *     beats any keyword matching we can do on the raw question text.
+ *  2. Fall back to our internal keyword rules.
+ *  3. Final resort: heuristic feature-based guess.
+ *
+ * By policy this function NEVER returns "Other" — every market gets a real
+ * category.
  */
 export function bucketize(
   category: string | null | undefined,
   question: string,
 ): Category {
+  // 1. Source category mapping — wins when the exchange labeled the market.
+  if (category) {
+    const fromSource = mapSourceCategory(category);
+    if (fromSource) return fromSource;
+  }
+
+  // 2. Keyword rules on the combined haystack.
   const haystack = `${category ?? ""} ${question}`;
   for (const [re, bucket] of RULES) {
     if (re.test(haystack)) return bucket;
   }
+
+  // 3. Heuristic guess based on text features.
   return heuristicGuess(haystack);
+}
+
+/**
+ * Translate an exchange-provided category label (Polymarket's `category` or
+ * Kalshi's series category) directly into one of our buckets. Returns null
+ * when the label is unknown or generic ("Trending", "Mentions", "Featured")
+ * so the caller can fall through to keyword rules.
+ *
+ * The patterns here are deliberately broad — they cover both Polymarket's
+ * marketing-flavored taxonomy (Pop Culture, Geopolitics, Trump) and
+ * Kalshi's cleaner one (Economics, World, Companies, Climate & Weather).
+ */
+function mapSourceCategory(raw: string): Category | null {
+  const s = raw.toLowerCase().trim();
+  if (!s) return null;
+
+  // Sports first (very strong signal, lots of league names)
+  if (
+    /(sport|nfl|nba|mlb|nhl|mls|epl|premier league|champions league|soccer|football|basketball|baseball|hockey|tennis|golf|mma|ufc|boxing|f1|formula|nascar|olympic|esport|cricket|rugby|wnba|college football|college basketball|march madness|world cup|stanley cup|super bowl|world series|tournament|league of legends|valorant|csgo|dota)/.test(
+      s,
+    )
+  )
+    return "Sports";
+
+  // Crypto
+  if (
+    /(crypto|bitcoin|btc|ethereum|eth|coin|altcoin|defi|blockchain|nft|web3|solana|stablecoin|memecoin)/.test(
+      s,
+    )
+  )
+    return "Crypto";
+
+  // Politics + Geopolitics + Government + World affairs
+  if (
+    /(politic|election|geopolit|world|war|conflict|government|policy|legal|justice|court|scotus|congress|senate|trump|biden|harris|presiden|cabinet|impeach|trial|prosecut|israel|gaza|ukraine|russia|china|iran|north korea|middle east|nato|UN |european union|EU |brexit|peace|ceasefire|hostage|sanction|tariff|treaty|country|nation|state|federal|kremlin)/.test(
+      s,
+    )
+  )
+    return "Politics";
+
+  // Macro / Economics / Finance / Business
+  if (
+    /(econom|finance|financial|macro|fed |federal reserve|fomc|inflation|cpi|gdp|recession|jobs|payroll|unemployment|treasury|bonds|stock|equity|equities|markets|earnings|business(?!\s*tech)|commodity|oil|gold|currency|forex|housing|mortgage)/.test(
+      s,
+    )
+  )
+    return "Macro";
+
+  // AI / Tech / Companies / Science
+  if (
+    /(\bai\b|artificial intelligence|tech|technology|science|companies|company|software|hardware|app|product|startup|ipo|silicon valley|space|spacex|robot|elon|musk)/.test(
+      s,
+    )
+  )
+    return "AI/Tech";
+
+  // Pop culture / Entertainment / Awards / Media
+  if (
+    /(culture|entertain|pop|movies?|tv|television|music|celebr|award|grammy|oscar|emmy|nobel|pulitzer|reality tv|netflix|streaming|art|fashion|gossip)/.test(
+      s,
+    )
+  )
+    return "Culture";
+
+  // Health / wellness / medicine
+  if (
+    /(health|medic|disease|drug|pharma|covid|pandemic|wellness|vaccine|hospital|fda)/.test(
+      s,
+    )
+  )
+    return "Health";
+
+  // Weather / climate / natural events
+  if (
+    /(weather|climate|temperature|hurricane|storm|tornado|earthquake|wildfire|flood|drought)/.test(
+      s,
+    )
+  )
+    return "Weather";
+
+  // Generic / meta categories ("Mentions", "Trending", "Featured", "All") —
+  // let keyword rules handle the actual question text.
+  return null;
 }
 
 /**
