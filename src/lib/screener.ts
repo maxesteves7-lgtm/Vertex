@@ -107,6 +107,7 @@ function toQuote(m: CanonicalMarket | null): ExchangeQuote | null {
     noPrice: m.noPrice,
     url: m.externalUrl,
     volume24h: m.volume24h,
+    priceChange24h: m.priceChange24h ?? null,
     siblings: m.siblings,
   };
 }

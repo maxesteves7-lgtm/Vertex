@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Inter } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { TopNav } from "@/components/TopNav";
 import { CommandBar } from "@/components/CommandBar";
@@ -10,17 +10,26 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "Futurist // Prediction Markets",
+  title: "Futurist // Prediction Market Terminal",
   description:
-    "All Kalshi & Polymarket events in one clean, dark, Robinhood-style feed.",
+    "Institutional-grade cross-exchange prediction market terminal — Kalshi + Polymarket.",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${plexMono.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--fg)]">
         <Suspense fallback={<div className="h-14 border-b border-[var(--border)]" />}>
           <TopNav />

@@ -1,34 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  /* Vertex Terminal — dark mode Robinhood-style palette */
-  --bg: #0f0f0f;
-  --bg-elev: #1a1a1a; /* card surface */
-  --bg-row: #1e1e1e; /* slightly elevated row / hover */
-  --bg-hover: #232323;
-  --border: #262626;
-  --border-soft: #1f1f1f;
-  --fg: #ffffff;
-  --fg-dim: #a3a3a3;
-  --fg-mute: #6b7280;
+  /* Futurist — institutional terminal palette (Bloomberg-inspired) */
+  --bg: #000000; /* true black */
+  --bg-elev: #0f0f0f; /* primary panel surface */
+  --bg-panel: #111111; /* secondary panel surface */
+  --bg-row: #161616; /* table row / hover */
+  --bg-hover: #1c1c1c;
+  --bg-active: #1a1a1a;
 
-  --accent-primary: #00c805; /* Robinhood green — yes / brand */
-  --accent-amber: #f59e0b;
-  --accent-up: #00c805; /* yes / up */
-  --accent-down: #ff5000; /* no / down */
+  --border: #222222; /* dividers — subtle */
+  --border-soft: #1a1a1a;
+  --border-strong: #2a2a2a;
+
+  --fg: #e8e8e8; /* primary text */
+  --fg-dim: #999999; /* secondary text */
+  --fg-mute: #666666; /* muted text / labels */
+
+  /* Bloomberg orange — primary brand + active highlight */
+  --accent-primary: #ff6600;
+  --accent-amber: #ff9900;
+
+  --accent-up: #00c805; /* yes / positive */
+  --accent-down: #ff3b30; /* no / negative */
   --accent-violet: #a78bfa;
   --accent-buy: #00c805;
-  --accent-sell: #ff5000;
+  --accent-sell: #ff3b30;
 
   /* Exchange-source badges */
   --src-polymarket: #6e56cf;
   --src-kalshi: #14b8a6;
-  --src-both: #f59e0b;
+  --src-both: #ff6600;
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-bg-elev: var(--bg-elev);
+  --color-bg-panel: var(--bg-panel);
   --color-border: var(--border);
   --color-fg: var(--fg);
   --color-fg-dim: var(--fg-dim);
@@ -54,32 +62,41 @@ body {
   font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
+/* All numeric data uses tabular mono — set this on data cells / values */
+.mono,
+.tabular,
+td.num,
+td.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 table {
   border-collapse: collapse;
 }
 
 ::selection {
   background: var(--accent-primary);
-  color: #002a00;
+  color: #000;
 }
 
-/* Thin minimal scrollbars */
+/* Thin scrollbars matching the terminal aesthetic */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 8px;
+  background: #222;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a3a;
+  background: #333;
 }
 
-/* Live blinking dot for active feeds */
+/* Live blinking dot */
 @keyframes pulse-dot {
   0%,
   100% {
@@ -98,14 +115,47 @@ table {
   animation: pulse-dot 1.6s ease-in-out infinite;
 }
 
-/* Card hover lift used across the new feed */
+/* Card hover lift used across the feed view */
 .card-hover {
   transition:
     background-color 120ms ease,
-    border-color 120ms ease,
-    transform 120ms ease;
+    border-color 120ms ease;
 }
 .card-hover:hover {
   background-color: var(--bg-hover);
-  border-color: #333;
+  border-color: var(--border-strong);
+}
+
+/* Reusable panel header — title left, controls right, subtle orange underline
+   when active. Used across Scanner / Order Flow / News / etc. */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+.panel-header.active {
+  box-shadow: inset 0 -2px 0 0 var(--accent-primary);
+}
+.panel-header__title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.panel-header__meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--fg-mute);
+}
+
+/* Terminal-style focusable cell highlight (used in Scanner) */
+.row-focused {
+  background-color: rgba(255, 102, 0, 0.06) !important;
+  box-shadow: inset 2px 0 0 0 var(--accent-primary);
 }

@@ -19,6 +19,8 @@ export type CanonicalMarket = {
   liquidity: number | null;
   closesAt: Date | null;
   isActive: boolean;
+  /** 24h YES-price change as a signed decimal (e.g. +0.07 = +7pp). */
+  priceChange24h?: number | null;
   yesTokenId?: string | null;
   noTokenId?: string | null;
   /**
@@ -44,6 +46,8 @@ export type ExchangeQuote = {
   noPrice: number | null;
   url: string;
   volume24h: number | null;
+  /** 24h YES-price change as a signed decimal. */
+  priceChange24h?: number | null;
   /** Candidates for multi-outcome events — shown in detail panel. */
   siblings?: SiblingMarket[];
 };

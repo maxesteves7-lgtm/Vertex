@@ -23,6 +23,8 @@ type GammaMarket = {
   endDate?: string;
   /** JSON-encoded array ["yesTokenId","noTokenId"] used to fetch CLOB price history */
   clobTokenIds?: string;
+  /** Signed YES-price change over the last 24h (Gamma calls it oneDayPriceChange) */
+  oneDayPriceChange?: string | number;
 };
 
 function safeNumber(v: unknown): number | null {
@@ -130,6 +132,7 @@ export async function fetchPolymarketMarkets(
       category: m.category ?? null,
       yesPrice,
       noPrice,
+      priceChange24h: safeNumber(m.oneDayPriceChange),
       volume24h: safeNumber(m.volume24hr),
       liquidity: safeNumber(m.liquidity),
       closesAt: m.endDate ? new Date(m.endDate) : null,

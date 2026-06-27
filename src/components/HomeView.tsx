@@ -16,15 +16,19 @@ import { Sidebar, type SidebarSelection } from "./Sidebar";
 import { EventCard, getSource } from "./EventCard";
 import { MarketDetailPanel } from "./MarketDetailPanel";
 import { ExchangeDownBanner } from "./Skeleton";
+import { Scanner } from "./Scanner";
+import { exportRowsToCsv } from "@/lib/csv";
 
 type SourceChip = "All" | "Polymarket" | "Kalshi";
 type SortChip = "Most Volume" | "Closing Soon";
+type ViewMode = "scanner" | "cards";
 
 const PAGE_SIZE = 300;
 const SEARCH_DEBOUNCE_MS = 250;
 
 const FAV_KEY = "vertex.favorites.v1";
 const SIDEBAR_KEY = "vertex.sidebar.v2";
+const VIEW_MODE_KEY = "vertex.viewMode.v1";
 
 export function HomeView({
   rows,
@@ -46,6 +50,7 @@ export function HomeView({
   });
   const [sourceChip, setSourceChip] = useState<SourceChip>("All");
   const [sortChip, setSortChip] = useState<SortChip>("Most Volume");
+  const [viewMode, setViewMode] = useState<ViewMode>("scanner");
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [highlightIdx, setHighlightIdx] = useState<number>(-1);
@@ -72,10 +77,19 @@ export function HomeView({
       }
       const f = localStorage.getItem(FAV_KEY);
       if (f) setFavorites(new Set(JSON.parse(f) as string[]));
+      const v = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null;
+      if (v === "scanner" || v === "cards") setViewMode(v);
     } catch {
       /* ignore */
     }
   }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, viewMode);
+    } catch {
+      /* ignore */
+    }
+  }, [viewMode]);
   useEffect(() => {
     try {
       localStorage.setItem(SIDEBAR_KEY, JSON.stringify(selection));
@@ -209,6 +223,23 @@ export function HomeView({
       ? (rows.find((r) => r.id === selectedId) ?? null)
       : null;
 
+  // Page title reflects the selected market — terminal-style
+  useEffect(() => {
+    const base = "Futurist // Prediction Market Terminal";
+    if (selected) {
+      const short =
+        selected.question.length > 60
+          ? selected.question.slice(0, 57) + "…"
+          : selected.question;
+      document.title = `${short} | Futurist`;
+    } else {
+      document.title = base;
+    }
+    return () => {
+      document.title = base;
+    };
+  }, [selected]);
+
   function toggleFavorite(id: string) {
     setFavorites((prev) => {
       const next = new Set(prev);
@@ -261,6 +292,12 @@ export function HomeView({
       } else if (e.key === "f" && highlightIdx >= 0) {
         const id = filtered[highlightIdx]?.row.id;
         if (id) toggleFavorite(id);
+      } else if (e.key === "1") {
+        e.preventDefault();
+        setViewMode("scanner");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        setViewMode("cards");
       }
     }
     window.addEventListener("keydown", onKey);
@@ -330,13 +367,54 @@ export function HomeView({
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowHelp(true)}
-            className="hidden md:inline text-[11px] text-[var(--fg-mute)] hover:text-white border border-[var(--border)] rounded-full px-2.5 py-1"
-            title="Keyboard shortcuts"
-          >
-            ? Shortcuts
-          </button>
+          <div className="flex items-center gap-2">
+            {/* View mode toggle — Scanner = dense table, Cards = grid */}
+            <div className="hidden md:flex items-center border border-[var(--border)] rounded-sm overflow-hidden font-mono text-[10px] tracking-[0.12em]">
+              <button
+                onClick={() => setViewMode("scanner")}
+                className={`px-2.5 py-1 transition-colors ${
+                  viewMode === "scanner"
+                    ? "bg-[var(--accent-primary)] text-black"
+                    : "text-[var(--fg-dim)] hover:text-white"
+                }`}
+                title="Dense terminal table (1)"
+              >
+                SCANNER
+              </button>
+              <button
+                onClick={() => setViewMode("cards")}
+                className={`px-2.5 py-1 border-l border-[var(--border)] transition-colors ${
+                  viewMode === "cards"
+                    ? "bg-[var(--accent-primary)] text-black"
+                    : "text-[var(--fg-dim)] hover:text-white"
+                }`}
+                title="Card grid (2)"
+              >
+                CARDS
+              </button>
+            </div>
+            {viewMode === "scanner" && (
+              <button
+                onClick={() =>
+                  exportRowsToCsv(
+                    filtered.map((x) => x.row),
+                    `futurist-${heading.toLowerCase().replace(/\s+/g, "-")}.csv`,
+                  )
+                }
+                className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-dim)] hover:text-[var(--accent-primary)] border border-[var(--border)] rounded-sm px-2.5 py-1"
+                title="Export current view to CSV"
+              >
+                ↓ CSV
+              </button>
+            )}
+            <button
+              onClick={() => setShowHelp(true)}
+              className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] hover:text-white border border-[var(--border)] rounded-sm px-2.5 py-1"
+              title="Keyboard shortcuts"
+            >
+              ?
+            </button>
+          </div>
         </div>
 
         {/* Filter chips */}
@@ -374,9 +452,16 @@ export function HomeView({
           </Chip>
         </div>
 
-        {/* Grid */}
+        {/* Body — Scanner table or Card grid */}
         {filtered.length === 0 ? (
           <EmptyState selection={selection} />
+        ) : viewMode === "scanner" ? (
+          <Scanner
+            rows={filtered.map((x) => x.row)}
+            onSelectRow={setSelectedId}
+            selectedId={selectedId}
+            highlightIdx={highlightIdx}
+          />
         ) : (
           <>
             <div
@@ -495,6 +580,8 @@ function ShortcutsModal({ onClose }: { onClose: () => void }) {
     ["j / k", "Move highlight down / up"],
     ["Enter", "Open highlighted market"],
     ["f", "Toggle favorite on highlighted market"],
+    ["1", "Switch to Scanner view"],
+    ["2", "Switch to Cards view"],
     ["Esc", "Close panel / modal / sidebar"],
     [":", "Open command bar"],
     ["?", "Show this menu"],
