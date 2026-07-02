@@ -95,6 +95,26 @@ model Quote {
   @@index([exchangeListingId, timestamp])
 }
 
+/// Historical YES-probability observation captured by the heatmap backfill
+/// cron. One row per (tokenId, hour-bucket). Used to compute the global
+/// N×N correlation matrix without hitting Polymarket for every query.
+model PriceObservation {
+  id         BigInt   @id @default(autoincrement())
+  tokenId    String
+  question   String
+  category   String
+  /// Bucket start time — always aligned to the top of the hour.
+  observedAt DateTime
+  price      Float
+  volume24h  Float?
+  createdAt  DateTime @default(now())
+
+  @@unique([tokenId, observedAt])
+  @@index([tokenId])
+  @@index([observedAt])
+  @@index([category, observedAt])
+}
+
 // ============ Users / Watchlists / Alerts ============
 
 model User {
