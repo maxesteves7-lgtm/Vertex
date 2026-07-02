@@ -20,7 +20,15 @@ import { Scanner } from "./Scanner";
 import { DesktopCockpit } from "./DesktopCockpit";
 import { DetailPane } from "./DetailPane";
 import { BottomStrip } from "./BottomStrip";
+import { ScreenerBuilder } from "./ScreenerBuilder";
 import { exportRowsToCsv } from "@/lib/csv";
+import {
+  deleteScreener,
+  loadScreeners,
+  saveScreeners,
+  upsertScreener,
+  type SavedScreener,
+} from "@/lib/screeners";
 
 type SourceChip = "All" | "Polymarket" | "Kalshi";
 type SortChip = "Most Volume" | "Closing Soon";
@@ -60,6 +68,11 @@ export function HomeView({
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [screeners, setScreeners] = useState<SavedScreener[]>([]);
+  const [builderTarget, setBuilderTarget] = useState<SavedScreener | null>(
+    null,
+  );
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   // Debounce the URL search term so each keystroke doesn't re-filter 5k rows
   const [debouncedQ, setDebouncedQ] = useState(urlQ);
@@ -82,6 +95,7 @@ export function HomeView({
       if (f) setFavorites(new Set(JSON.parse(f) as string[]));
       const v = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null;
       if (v === "scanner" || v === "cards") setViewMode(v);
+      setScreeners(loadScreeners());
     } catch {
       /* ignore */
     }
@@ -157,14 +171,49 @@ export function HomeView({
         out = out.filter((x) => favorites.has(x.row.id));
       }
       // "All" — no view-level filter
-    } else {
-      // category type
+    } else if (selection.type === "category") {
       out = out.filter((x) => x.row.bucket === selection.bucket);
       if (selection.sub) {
         out = out.filter(
           (x) =>
             subBucketize(selection.bucket, x.row.question) === selection.sub,
         );
+      }
+    } else {
+      // "screener" — apply the saved preset's filter
+      const preset = screeners.find((s) => s.id === selection.id);
+      if (preset) {
+        const f = preset.filter;
+        if (f.sources.length > 0) {
+          out = out.filter((x) => f.sources.includes(x.source));
+        }
+        if (f.categories.length > 0) {
+          out = out.filter((x) => f.categories.includes(x.row.bucket));
+        }
+        if (f.minVolume24h && f.minVolume24h > 0) {
+          out = out.filter(
+            (x) => (x.row.volume24h ?? 0) >= (f.minVolume24h as number),
+          );
+        }
+        if (f.maxDaysToClose !== undefined) {
+          const cutoff =
+            Date.now() + f.maxDaysToClose * 24 * 60 * 60 * 1000;
+          out = out.filter(
+            (x) =>
+              x.row.closesAt !== null &&
+              x.row.closesAt.getTime() <= cutoff,
+          );
+        }
+        if (f.yesMin !== undefined || f.yesMax !== undefined) {
+          const lo = f.yesMin ?? 0;
+          const hi = f.yesMax ?? 1;
+          out = out.filter((x) => {
+            const yes =
+              x.row.polymarket?.yesPrice ?? x.row.kalshi?.yesPrice ?? null;
+            if (yes === null) return false;
+            return yes >= lo && yes <= hi;
+          });
+        }
       }
     }
 
@@ -214,6 +263,7 @@ export function HomeView({
     sortChip,
     debouncedQ,
     favorites,
+    screeners,
   ]);
 
   const totalVol = useMemo(
@@ -330,8 +380,11 @@ export function HomeView({
           : selection.view === "Closing"
             ? "Closing Soon"
             : "Watchlist";
-  } else {
+  } else if (selection.type === "category") {
     heading = selection.sub ?? selection.bucket;
+  } else {
+    heading =
+      screeners.find((s) => s.id === selection.id)?.name ?? "Screener";
   }
 
   // Trades and news relevant to the currently-selected market — derived
@@ -542,6 +595,22 @@ export function HomeView({
         onSelect={setSelection}
         counts={counts}
         watchlistCount={favorites.size}
+        screeners={screeners}
+        onOpenScreenerBuilder={(existing) => {
+          setBuilderTarget(existing);
+          setBuilderOpen(true);
+        }}
+        onDeleteScreener={(id) => {
+          setScreeners((cur) => {
+            const next = deleteScreener(cur, id);
+            saveScreeners(next);
+            return next;
+          });
+          // If the deleted one was active, snap back to All Markets
+          if (selection.type === "screener" && selection.id === id) {
+            setSelection({ type: "view", view: "All" });
+          }
+        }}
         open={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />
@@ -596,6 +665,28 @@ export function HomeView({
       )}
 
       {showHelp && <ShortcutsModal onClose={() => setShowHelp(false)} />}
+
+      {builderOpen && (
+        <ScreenerBuilder
+          existing={builderTarget}
+          totalSaved={screeners.length}
+          onSave={(preset) => {
+            setScreeners((cur) => {
+              const next = upsertScreener(cur, preset);
+              saveScreeners(next);
+              return next;
+            });
+            setBuilderOpen(false);
+            setBuilderTarget(null);
+            // Jump to the newly-saved screener so the user sees it apply
+            setSelection({ type: "screener", id: preset.id });
+          }}
+          onClose={() => {
+            setBuilderOpen(false);
+            setBuilderTarget(null);
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CATEGORY_TREE, type Category } from "@/lib/categories";
+import { MAX_SCREENERS, type SavedScreener } from "@/lib/screeners";
 
 export type ViewKey =
   | "All"
@@ -11,7 +12,8 @@ export type ViewKey =
 
 export type SidebarSelection =
   | { type: "view"; view: ViewKey }
-  | { type: "category"; bucket: Category; sub: string | null };
+  | { type: "category"; bucket: Category; sub: string | null }
+  | { type: "screener"; id: string };
 
 const DISCOVER: Array<{ view: ViewKey; label: string; icon: string }> = [
   { view: "All", label: "All Markets", icon: "●" },
@@ -25,6 +27,9 @@ export function Sidebar({
   onSelect,
   counts,
   watchlistCount,
+  screeners,
+  onOpenScreenerBuilder,
+  onDeleteScreener,
   open,
   onCloseMobile,
 }: {
@@ -33,6 +38,11 @@ export function Sidebar({
   /** Map of total counts per top-level bucket (and "All") for the badge. */
   counts: Record<string, number>;
   watchlistCount: number;
+  /** User's saved screener presets — rendered in "MY SCREENERS" section. */
+  screeners: SavedScreener[];
+  /** Open the builder modal. `existing` = edit mode; null = new preset. */
+  onOpenScreenerBuilder: (existing: SavedScreener | null) => void;
+  onDeleteScreener: (id: string) => void;
   /** Mobile drawer open state — controlled by parent. */
   open: boolean;
   onCloseMobile: () => void;
@@ -109,6 +119,79 @@ export function Sidebar({
               </button>
             );
           })}
+        </div>
+
+        {/* MY SCREENERS — user-defined filter presets, up to 5 */}
+        <div className="flex items-baseline justify-between px-2 mt-5 mb-2">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--fg-mute)]">
+            My Screeners
+          </div>
+          <span className="text-[10px] font-mono text-[var(--fg-mute)]">
+            {screeners.length}/{MAX_SCREENERS}
+          </span>
+        </div>
+        <div className="space-y-0.5">
+          {screeners.map((s) => {
+            const active =
+              selection.type === "screener" && selection.id === s.id;
+            return (
+              <div key={s.id} className="flex items-stretch group">
+                <button
+                  onClick={() => {
+                    onSelect({ type: "screener", id: s.id });
+                    onCloseMobile();
+                  }}
+                  className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-left truncate ${
+                    active
+                      ? "bg-[var(--bg-elev)] text-white"
+                      : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-white"
+                  }`}
+                >
+                  <span className="text-[var(--accent-primary)] text-[12px]">
+                    ▤
+                  </span>
+                  <span className="truncate">{s.name}</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenScreenerBuilder(s);
+                  }}
+                  aria-label="Edit screener"
+                  title="Edit"
+                  className="px-1.5 text-[var(--fg-mute)] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete screener "${s.name}"?`)) {
+                      onDeleteScreener(s.id);
+                    }
+                  }}
+                  aria-label="Delete screener"
+                  title="Delete"
+                  className="px-1.5 text-[var(--fg-mute)] hover:text-[var(--accent-down)] opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+          <button
+            onClick={() => onOpenScreenerBuilder(null)}
+            disabled={screeners.length >= MAX_SCREENERS}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-[var(--fg-mute)] hover:text-[var(--accent-primary)] hover:bg-[var(--bg-elev)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title={
+              screeners.length >= MAX_SCREENERS
+                ? "Preset cap reached"
+                : "Create new screener"
+            }
+          >
+            <span>+</span>
+            <span>New Screener</span>
+          </button>
         </div>
 
         <div className="text-[10px] uppercase tracking-wider text-[var(--fg-mute)] px-2 mt-5 mb-2">
