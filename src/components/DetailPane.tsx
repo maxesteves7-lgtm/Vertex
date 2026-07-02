@@ -10,6 +10,7 @@ import { PriceChart } from "./PriceChart";
 import { AlertButton } from "./AlertButton";
 import { getSource } from "./EventCard";
 import { OrderBook } from "./OrderBook";
+import { CorrelatedMarkets, type Candidate } from "./CorrelatedMarkets";
 
 /**
  * Always-visible inline detail pane for the desktop cockpit. When no market
@@ -21,14 +22,19 @@ export function DetailPane({
   row,
   news,
   trades,
+  candidates,
   isFavorite,
   onToggleFavorite,
+  onSelectRow,
 }: {
   row: ScreenerRow | null;
   news: NewsItem[];
   trades: TradeEvent[];
+  /** Candidate peers for correlation — Polymarket-backed rows in the same bucket. */
+  candidates: Candidate[];
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onSelectRow: (rowId: string) => void;
 }) {
   if (!row) {
     return (
@@ -143,6 +149,15 @@ export function DetailPane({
       {/* Price History */}
       <Section title="Price History (Polymarket YES)">
         <PriceChart tokenId={row.polymarketYesTokenId} />
+      </Section>
+
+      {/* Correlated Markets */}
+      <Section title="Correlated Markets">
+        <CorrelatedMarkets
+          seedTokenId={row.polymarketYesTokenId}
+          candidates={candidates}
+          onSelectRow={onSelectRow}
+        />
       </Section>
 
       {/* Alerts */}

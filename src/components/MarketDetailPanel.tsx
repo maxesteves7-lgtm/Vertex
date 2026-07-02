@@ -10,23 +10,29 @@ import { fmtPct, fmtUsd, fmtRelativeDate, fmtSmartTime } from "@/lib/format";
 import { PriceChart } from "./PriceChart";
 import { AlertButton } from "./AlertButton";
 import { OrderBook } from "./OrderBook";
+import { CorrelatedMarkets, type Candidate } from "./CorrelatedMarkets";
 
 type Props = {
   row: ScreenerRow;
   news: NewsItem[];
   trades: TradeEvent[];
+  /** Same-bucket candidate peers for correlation. */
+  candidates: Candidate[];
   isFavorite: boolean;
   onClose: () => void;
   onToggleFavorite: () => void;
+  onSelectRow: (rowId: string) => void;
 };
 
 export function MarketDetailPanel({
   row,
   news,
   trades,
+  candidates,
   isFavorite,
   onClose,
   onToggleFavorite,
+  onSelectRow,
 }: Props) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -139,6 +145,15 @@ export function MarketDetailPanel({
           {/* Real chart */}
           <Section title="Price History">
             <PriceChart tokenId={row.polymarketYesTokenId} />
+          </Section>
+
+          {/* Correlated Markets */}
+          <Section title="Correlated Markets">
+            <CorrelatedMarkets
+              seedTokenId={row.polymarketYesTokenId}
+              candidates={candidates}
+              onSelectRow={onSelectRow}
+            />
           </Section>
 
           {/* Alerts */}

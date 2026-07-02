@@ -353,6 +353,28 @@ export function HomeView({
         .slice(0, 20)
     : [];
 
+  // Candidate peers for correlation — Polymarket-backed rows in the same
+  // bucket as the seed, sorted by 24h volume so we score the most liquid
+  // peers first. Capped at 30 so the API stays comfortably under Vercel's
+  // 10-second function budget with concurrency 6.
+  const correlationCandidates = useMemo(() => {
+    if (!selected) return [];
+    return rows
+      .filter(
+        (r) =>
+          r.id !== selected.id &&
+          r.bucket === selected.bucket &&
+          !!r.polymarketYesTokenId,
+      )
+      .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
+      .slice(0, 30)
+      .map((r) => ({
+        tokenId: r.polymarketYesTokenId as string,
+        rowId: r.id,
+        question: r.question,
+      }));
+  }, [rows, selected]);
+
   const mainPaneContent = (
     <section className="flex-1 min-w-0 px-4 md:px-6 py-5">
         <ExchangeDownBanner missing={missing} />
@@ -533,10 +555,12 @@ export function HomeView({
               row={selected}
               news={selectedNews}
               trades={selectedTrades}
+              candidates={correlationCandidates}
               isFavorite={selected ? favorites.has(selected.id) : false}
               onToggleFavorite={() => {
                 if (selected) toggleFavorite(selected.id);
               }}
+              onSelectRow={setSelectedId}
             />
           }
           bottom={
@@ -562,9 +586,11 @@ export function HomeView({
             row={selected}
             news={selectedNews}
             trades={selectedTrades}
+            candidates={correlationCandidates}
             isFavorite={favorites.has(selected.id)}
             onClose={() => setSelectedId(null)}
             onToggleFavorite={() => toggleFavorite(selected.id)}
+            onSelectRow={setSelectedId}
           />
         </div>
       )}
