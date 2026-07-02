@@ -17,6 +17,9 @@ import { EventCard, getSource } from "./EventCard";
 import { MarketDetailPanel } from "./MarketDetailPanel";
 import { ExchangeDownBanner } from "./Skeleton";
 import { Scanner } from "./Scanner";
+import { DesktopCockpit } from "./DesktopCockpit";
+import { DetailPane } from "./DetailPane";
+import { BottomStrip } from "./BottomStrip";
 import { exportRowsToCsv } from "@/lib/csv";
 
 type SourceChip = "All" | "Polymarket" | "Kalshi";
@@ -331,18 +334,27 @@ export function HomeView({
     heading = selection.sub ?? selection.bucket;
   }
 
-  return (
-    <main className="flex-1 flex relative">
-      <Sidebar
-        selection={selection}
-        onSelect={setSelection}
-        counts={counts}
-        watchlistCount={favorites.size}
-        open={mobileSidebarOpen}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
-      />
+  // Trades and news relevant to the currently-selected market — derived
+  // once here so both the desktop inline pane and the mobile overlay can
+  // share the computation.
+  const selectedNews = selected
+    ? news.filter((n) => n.affectedMarketIds.includes(selected.id))
+    : [];
+  const selectedTrades = selected
+    ? trades
+        .filter(
+          (t) =>
+            t.marketQuestion.toLowerCase() ===
+              selected.question.toLowerCase() ||
+            selected.question
+              .toLowerCase()
+              .includes(t.marketQuestion.toLowerCase().slice(0, 30)),
+        )
+        .slice(0, 20)
+    : [];
 
-      <section className="flex-1 min-w-0 px-4 md:px-6 py-5">
+  const mainPaneContent = (
+    <section className="flex-1 min-w-0 px-4 md:px-6 py-5">
         <ExchangeDownBanner missing={missing} />
         {/* Heading */}
         <div className="flex items-center justify-between gap-2 mb-4">
@@ -499,32 +511,65 @@ export function HomeView({
           </>
         )}
       </section>
+  );
 
-      {selected && (
-        <MarketDetailPanel
-          row={selected}
-          news={news.filter((n) => n.affectedMarketIds.includes(selected.id))}
-          trades={trades
-            .filter(
-              (t) =>
-                t.marketQuestion.toLowerCase() ===
-                  selected.question.toLowerCase() ||
-                selected.question
-                  .toLowerCase()
-                  .includes(
-                    t.marketQuestion.toLowerCase().slice(0, 30),
-                  ),
-            )
-            .slice(0, 20)}
-          isFavorite={favorites.has(selected.id)}
-          onClose={() => setSelectedId(null)}
-          onToggleFavorite={() => toggleFavorite(selected.id)}
+  return (
+    <main className="flex-1 flex relative">
+      <Sidebar
+        selection={selection}
+        onSelect={setSelection}
+        counts={counts}
+        watchlistCount={favorites.size}
+        open={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
+
+      {/* Desktop cockpit — three resizable panels. */}
+      <div className="hidden md:flex flex-1 min-w-0">
+        <DesktopCockpit
+          main={mainPaneContent}
+          detail={
+            <DetailPane
+              row={selected}
+              news={selectedNews}
+              trades={selectedTrades}
+              isFavorite={selected ? favorites.has(selected.id) : false}
+              onToggleFavorite={() => {
+                if (selected) toggleFavorite(selected.id);
+              }}
+            />
+          }
+          bottom={
+            <BottomStrip
+              rows={rows}
+              news={news}
+              onSelectRow={setSelectedId}
+            />
+          }
         />
+      </div>
+
+      {/* Mobile single column — same main content, overlay detail. */}
+      <div className="md:hidden flex-1 min-w-0 flex">
+        {mainPaneContent}
+      </div>
+
+      {/* Mobile-only overlay detail. On desktop the same data renders inline
+          inside the cockpit's right panel, so we hide the overlay above md. */}
+      {selected && (
+        <div className="md:hidden">
+          <MarketDetailPanel
+            row={selected}
+            news={selectedNews}
+            trades={selectedTrades}
+            isFavorite={favorites.has(selected.id)}
+            onClose={() => setSelectedId(null)}
+            onToggleFavorite={() => toggleFavorite(selected.id)}
+          />
+        </div>
       )}
 
-      {showHelp && (
-        <ShortcutsModal onClose={() => setShowHelp(false)} />
-      )}
+      {showHelp && <ShortcutsModal onClose={() => setShowHelp(false)} />}
     </main>
   );
 }
