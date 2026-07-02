@@ -61,9 +61,14 @@ export async function GET() {
     if (!m.yesTokenId) return;
     let pts: Array<{ t: number; p: number }> = [];
     try {
+      // interval on Polymarket CLOB is a *lookback window*, not sample
+      // spacing — "6h" only returns 6 hours of history (~7 pts). We want a
+      // real observation window for correlation, so pull the last month at
+      // hourly fidelity (~720 pts/market).
       pts = await fetchPolymarketPriceHistory({
         tokenId: m.yesTokenId,
-        interval: "6h",
+        interval: "1m",
+        fidelity: 60,
       });
     } catch (e) {
       failures.push({
