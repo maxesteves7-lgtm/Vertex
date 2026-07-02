@@ -7,7 +7,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Runtime queries go through Neon's pooled endpoint (`-pooler`), which is
+  // required for serverless Prisma queries at scale.
   url      = env("DATABASE_URL")
+  // Migrations need a *direct* (non-pooled) connection — Prisma uses Postgres
+  // advisory locks to serialize migrations and PgBouncer breaks session-scoped
+  // locks, so `prisma migrate deploy` hangs against the pooled URL.
+  directUrl = env("DIRECT_URL")
 }
 
 // ============ Exchanges ============
