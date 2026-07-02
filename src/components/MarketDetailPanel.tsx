@@ -16,24 +16,27 @@ type Props = {
   row: ScreenerRow;
   news: NewsItem[];
   trades: TradeEvent[];
-  /** Same-bucket candidate peers for correlation. */
-  candidates: Candidate[];
+  /** Same-bucket candidate peers for correlation. Optional — legacy callers
+   *  (CalendarView / old Screener) render without correlations. */
+  candidates?: Candidate[];
   isFavorite: boolean;
   onClose: () => void;
   onToggleFavorite: () => void;
-  onSelectRow: (rowId: string) => void;
+  /** Optional — legacy callers ignore row-select from within the detail. */
+  onSelectRow?: (rowId: string) => void;
 };
 
 export function MarketDetailPanel({
   row,
   news,
   trades,
-  candidates,
+  candidates = [],
   isFavorite,
   onClose,
   onToggleFavorite,
   onSelectRow,
 }: Props) {
+  const handleSelectRow = onSelectRow ?? (() => {});
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -152,7 +155,7 @@ export function MarketDetailPanel({
             <CorrelatedMarkets
               seedTokenId={row.polymarketYesTokenId}
               candidates={candidates}
-              onSelectRow={onSelectRow}
+              onSelectRow={handleSelectRow}
             />
           </Section>
 
