@@ -70,14 +70,33 @@ export function HeatmapView() {
     setPrimeMsg("Running backfill — this can take up to a minute…");
     try {
       const res = await fetch("/api/heatmap/backfill");
-      const json = (await res.json()) as {
-        ok?: boolean;
-        markets?: number;
-        inserted?: number;
-        elapsedMs?: number;
-      };
+      // Read as text first so we can display the real body even if it's not JSON
+      const rawText = await res.text();
+      let json:
+        | {
+            ok?: boolean;
+            markets?: number;
+            inserted?: number;
+            elapsedMs?: number;
+            error?: string;
+          }
+        | null = null;
+      try {
+        json = JSON.parse(rawText);
+      } catch {
+        /* not JSON */
+      }
+      if (!res.ok) {
+        const detail =
+          json?.error ??
+          rawText.slice(0, 240) ??
+          `HTTP ${res.status}`;
+        setPrimeMsg(`Backfill failed (HTTP ${res.status}) · ${detail}`);
+        setPriming(false);
+        return;
+      }
       setPrimeMsg(
-        `Backfill done · ${json.markets ?? 0} markets · ${json.inserted ?? 0} new observations · ${((json.elapsedMs ?? 0) / 1000).toFixed(1)}s. Reloading…`,
+        `Backfill done · ${json?.markets ?? 0} markets · ${json?.inserted ?? 0} new observations · ${((json?.elapsedMs ?? 0) / 1000).toFixed(1)}s. Reloading…`,
       );
       // Force a data refresh
       const bump = timeWindow;
@@ -86,9 +105,11 @@ export function HeatmapView() {
       setTimeout(() => {
         setPriming(false);
         setPrimeMsg(null);
-      }, 3000);
+      }, 4000);
     } catch (e) {
-      setPrimeMsg(`Backfill failed: ${e instanceof Error ? e.message : "unknown"}`);
+      setPrimeMsg(
+        `Backfill request failed: ${e instanceof Error ? e.message : "unknown"}`,
+      );
       setPriming(false);
     }
   }
