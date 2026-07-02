@@ -204,6 +204,79 @@ export async function fetchPolymarketResolved(
     .filter((m) => m.question); // skip rows without a question
 }
 
+// ============ Order book (CLOB L2) ============
+
+export type OrderBookLevel = {
+  /** Probability price 0..1 */
+  price: number;
+  /** Contract shares available at this level */
+  size: number;
+};
+
+export type OrderBook = {
+  /** Highest-bid-first list of bid levels. */
+  bids: OrderBookLevel[];
+  /** Lowest-ask-first list of ask levels. */
+  asks: OrderBookLevel[];
+  /** Server-side timestamp (unix ms) if provided, else fetch time. */
+  timestamp: number;
+};
+
+type RawBookLevel = { price: string | number; size: string | number };
+type RawBook = {
+  bids?: RawBookLevel[];
+  asks?: RawBookLevel[];
+  timestamp?: string | number;
+};
+
+/**
+ * Fetch the current CLOB L2 order book for a Polymarket outcome token.
+ * Bids are returned highest-first, asks lowest-first (sorting is done here
+ * defensively even if the API already does it).
+ */
+export async function fetchPolymarketOrderBook(
+  tokenId: string,
+): Promise<OrderBook> {
+  const url = new URL(`${CLOB_BASE}/book`);
+  url.searchParams.set("token_id", tokenId);
+
+  const res = await fetch(url.toString(), {
+    // Order books move — keep the edge cache short
+    next: { revalidate: 5 },
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error(`Polymarket CLOB book returned ${res.status}`);
+  }
+  const raw = (await res.json()) as RawBook;
+
+  const parseLevel = (l: RawBookLevel): OrderBookLevel | null => {
+    const price = typeof l.price === "number" ? l.price : parseFloat(l.price);
+    const size = typeof l.size === "number" ? l.size : parseFloat(l.size);
+    if (!Number.isFinite(price) || !Number.isFinite(size) || size <= 0)
+      return null;
+    return { price, size };
+  };
+
+  const bids = (raw.bids ?? [])
+    .map(parseLevel)
+    .filter((l): l is OrderBookLevel => l !== null)
+    .sort((a, b) => b.price - a.price); // best (highest) bid first
+  const asks = (raw.asks ?? [])
+    .map(parseLevel)
+    .filter((l): l is OrderBookLevel => l !== null)
+    .sort((a, b) => a.price - b.price); // best (lowest) ask first
+
+  const ts =
+    typeof raw.timestamp === "number"
+      ? raw.timestamp
+      : typeof raw.timestamp === "string"
+        ? parseInt(raw.timestamp, 10) || Date.now()
+        : Date.now();
+
+  return { bids, asks, timestamp: ts };
+}
+
 // ============ Price history (CLOB) ============
 
 const CLOB_BASE = "https://clob.polymarket.com";

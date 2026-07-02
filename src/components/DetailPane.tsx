@@ -9,6 +9,7 @@ import { fmtPct, fmtUsd, fmtRelativeDate, fmtSmartTime } from "@/lib/format";
 import { PriceChart } from "./PriceChart";
 import { AlertButton } from "./AlertButton";
 import { getSource } from "./EventCard";
+import { OrderBook } from "./OrderBook";
 
 /**
  * Always-visible inline detail pane for the desktop cockpit. When no market
@@ -132,6 +133,11 @@ export function DetailPane({
             </span>
           </div>
         )}
+      </Section>
+
+      {/* Order Book — Polymarket CLOB L2 */}
+      <Section title="Order Book (Polymarket)">
+        <OrderBook tokenId={row.polymarketYesTokenId} />
       </Section>
 
       {/* Price History */}

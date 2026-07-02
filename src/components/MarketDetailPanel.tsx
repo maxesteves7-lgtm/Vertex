@@ -9,6 +9,7 @@ import type {
 import { fmtPct, fmtUsd, fmtRelativeDate, fmtSmartTime } from "@/lib/format";
 import { PriceChart } from "./PriceChart";
 import { AlertButton } from "./AlertButton";
+import { OrderBook } from "./OrderBook";
 
 type Props = {
   row: ScreenerRow;
@@ -129,6 +130,11 @@ export function MarketDetailPanel({
               <SiblingsList row={row} />
             </Section>
           ) : null}
+
+          {/* Order Book — Polymarket CLOB L2 */}
+          <Section title="Order Book (Polymarket)">
+            <OrderBook tokenId={row.polymarketYesTokenId} />
+          </Section>
 
           {/* Real chart */}
           <Section title="Price History">
