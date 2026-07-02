@@ -7,10 +7,10 @@ import {
 import { bucketize } from "@/lib/categories";
 import { pool } from "@/lib/correlation";
 
-// Vercel Hobby's per-function ceiling is 60s. The backfill fetches history
-// for ~40 markets in parallel and bulk-inserts — comfortably under budget,
-// but well over the default 10s that would otherwise kill it silently.
-export const maxDuration = 60;
+// Vercel's default per-function ceiling is 10s, which was silently killing
+// the backfill mid-run. 30s is the widely-supported Hobby ceiling and gives
+// us plenty of headroom for a 25-market batch.
+export const maxDuration = 30;
 
 /**
  * GET /api/heatmap/backfill
@@ -41,7 +41,7 @@ export async function GET() {
   const seeds = markets
     .filter((m) => !!m.yesTokenId && typeof m.yesPrice === "number")
     .sort((a, b) => (b.volume24h ?? 0) - (a.volume24h ?? 0))
-    .slice(0, 40);
+    .slice(0, 25);
 
   if (seeds.length === 0) {
     return NextResponse.json({

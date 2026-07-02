@@ -405,9 +405,9 @@ function EmptyState({
       </div>
       <p className="text-[13px] text-[var(--fg-dim)] max-w-md mx-auto mb-4">
         The nightly backfill runs at 07:00 UTC to populate the PriceObservation
-        table. You can also trigger it manually right now — it takes about a
-        minute and pulls 60 markets × their historical 6h series into the
-        database.
+        table. You can also trigger it manually right now — it takes about
+        20–30 seconds and pulls 25 markets × their historical 6h series into
+        the database.
       </p>
       <button
         onClick={onPrime}
