@@ -111,7 +111,20 @@ async function fetchSeriesObservations(
     headers: { accept: "application/json" },
   });
   if (!res.ok) {
-    throw new Error(`FRED ${seriesId} returned ${res.status}`);
+    // FRED returns a JSON error with a `error_message` field on bad keys /
+    // rate limits / bad series IDs — surface it so we don't just see
+    // "returned 400" and have to guess.
+    let detail = "";
+    try {
+      const txt = await res.text();
+      const parsed = JSON.parse(txt) as { error_message?: string };
+      detail = parsed.error_message ?? txt.slice(0, 140);
+    } catch {
+      /* body wasn't JSON */
+    }
+    throw new Error(
+      `FRED ${seriesId} → ${res.status}${detail ? ` · ${detail}` : ""}`,
+    );
   }
   const data = (await res.json()) as FredResp;
   const raw = data.observations ?? [];
@@ -120,20 +133,33 @@ async function fetchSeriesObservations(
     .filter((o) => Number.isFinite(o.value));
 }
 
-export async function fetchMacroTicker(apiKey: string): Promise<MacroTick[]> {
-  const ticks = await pool(MACRO_SERIES, 3, async (s) => {
+export type MacroTickerResult = {
+  ticks: MacroTick[];
+  /** Per-series failure reasons — surfaced so the client can show a real
+   *  message instead of a silent empty state when the API key is bad. */
+  failures: Array<{ id: string; reason: string }>;
+};
+
+export async function fetchMacroTicker(
+  apiKey: string,
+): Promise<MacroTickerResult> {
+  const failures: Array<{ id: string; reason: string }> = [];
+  const rawTicks = await pool(MACRO_SERIES, 3, async (s) => {
     // CPI YoY needs 13 monthly obs; other series only need last 2 daily obs
     const count = s.kind === "cpiYoY" ? 13 : 2;
     let obs: Array<{ date: string; value: number }> = [];
     try {
       obs = await fetchSeriesObservations(apiKey, s.id, count);
-    } catch {
-      // Individual series failure shouldn't kill the whole ticker
+    } catch (e) {
+      failures.push({
+        id: s.id,
+        reason: e instanceof Error ? e.message : "unknown",
+      });
     }
     return toTick(s, obs);
   });
-  // Drop any series that returned no data at all so the strip stays clean
-  return ticks.filter((t): t is MacroTick => t !== null);
+  const ticks = rawTicks.filter((t): t is MacroTick => t !== null);
+  return { ticks, failures };
 }
 
 function toTick(

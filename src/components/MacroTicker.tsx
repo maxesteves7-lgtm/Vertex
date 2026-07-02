@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import type { MacroTick } from "@/lib/macro";
 
-type Resp = { configured: boolean; ticks: MacroTick[]; error?: string };
+type Resp = {
+  configured: boolean;
+  ticks: MacroTick[];
+  failures?: Array<{ id: string; reason: string }>;
+};
 
 /** Refresh every 5 minutes — FRED data updates daily/monthly at most. */
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -65,10 +69,16 @@ export function MacroTicker() {
   }
 
   if (error || (data && data.ticks.length === 0)) {
+    // Show the actual failure reason from FRED (bad key, bad series, rate
+    // limit, etc.) so we're not left guessing.
+    const detail =
+      error ??
+      data?.failures?.[0]?.reason ??
+      "no observations returned";
     return (
-      <div className="h-7 border-b border-[var(--border)] bg-[var(--bg-elev)] flex items-center px-4">
-        <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--accent-down)]">
-          MACRO FEED ERROR{error ? ` · ${error}` : ""}
+      <div className="h-7 border-b border-[var(--border)] bg-[var(--bg-elev)] flex items-center px-4 overflow-hidden">
+        <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--accent-down)] truncate">
+          MACRO FEED ERROR · {detail}
         </span>
       </div>
     );

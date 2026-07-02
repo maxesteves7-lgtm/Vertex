@@ -8,20 +8,20 @@ import { fetchMacroTicker } from "@/lib/macro";
  * Funds, CPI YoY, 10Y, VIX, USD broad index).
  *
  * Response:
- *   {configured: true, ticks: MacroTick[]} when FRED_API_KEY is set
- *   {configured: false, ticks: []}         when the env var is missing
+ *   {configured: true, ticks, failures?} when FRED_API_KEY is set
+ *   {configured: false, ticks: []}       when the env var is missing
  *
- * The ticker component uses `configured` to render a small setup hint
- * instead of an error state.
+ * The `failures` array surfaces per-series errors from FRED (bad key, bad
+ * series ID, rate limit, etc.) so the ticker component can show a real
+ * message instead of a silent empty state.
  */
 export async function GET() {
   const apiKey = process.env.FRED_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { configured: false, ticks: [] },
+      { configured: false, ticks: [], failures: [] },
       {
         headers: {
-          // No key = no data; cache briefly so we don't hammer this route
           "cache-control": "public, s-maxage=60, stale-while-revalidate=300",
         },
       },
@@ -29,13 +29,11 @@ export async function GET() {
   }
 
   try {
-    const ticks = await fetchMacroTicker(apiKey);
+    const { ticks, failures } = await fetchMacroTicker(apiKey);
     return NextResponse.json(
-      { configured: true, ticks },
+      { configured: true, ticks, failures },
       {
         headers: {
-          // Macro data updates infrequently (daily/monthly); 5-minute
-          // shared cache with 30-minute SWR is plenty fresh
           "cache-control": "public, s-maxage=300, stale-while-revalidate=1800",
         },
       },
@@ -45,7 +43,9 @@ export async function GET() {
       {
         configured: true,
         ticks: [],
-        error: e instanceof Error ? e.message : "FRED fetch failed",
+        failures: [
+          { id: "*", reason: e instanceof Error ? e.message : "FRED fetch failed" },
+        ],
       },
       { status: 502 },
     );
