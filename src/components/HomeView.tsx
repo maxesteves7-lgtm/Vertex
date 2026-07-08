@@ -21,6 +21,7 @@ import { DesktopCockpit } from "./DesktopCockpit";
 import { DetailPane } from "./DetailPane";
 import { BottomStrip } from "./BottomStrip";
 import { ScreenerBuilder } from "./ScreenerBuilder";
+import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { exportRowsToCsv } from "@/lib/csv";
 import {
   deleteScreener,
@@ -65,7 +66,10 @@ export function HomeView({
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [highlightIdx, setHighlightIdx] = useState<number>(-1);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  /** Ordered list of favorited row IDs. Order matters — the Watchlist view
+   *  and drag-to-reorder both rely on it. Persisted as an array in
+   *  localStorage. Wrap in a Set via `favoritesSet` for O(1) has-checks. */
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [screeners, setScreeners] = useState<SavedScreener[]>([]);
@@ -73,6 +77,11 @@ export function HomeView({
     null,
   );
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    rowId: string;
+  } | null>(null);
 
   // Debounce the URL search term so each keystroke doesn't re-filter 5k rows
   const [debouncedQ, setDebouncedQ] = useState(urlQ);
@@ -92,7 +101,7 @@ export function HomeView({
         }
       }
       const f = localStorage.getItem(FAV_KEY);
-      if (f) setFavorites(new Set(JSON.parse(f) as string[]));
+      if (f) setFavorites(JSON.parse(f) as string[]);
       const v = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null;
       if (v === "scanner" || v === "cards") setViewMode(v);
       setScreeners(loadScreeners());
@@ -116,11 +125,14 @@ export function HomeView({
   }, [selection]);
   useEffect(() => {
     try {
-      localStorage.setItem(FAV_KEY, JSON.stringify([...favorites]));
+      localStorage.setItem(FAV_KEY, JSON.stringify(favorites));
     } catch {
       /* ignore */
     }
   }, [favorites]);
+
+  /** Memoized Set for O(1) `has()` checks in filter + everywhere else. */
+  const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
 
   // Reset paging + highlight on any filter change
   useEffect(() => {
@@ -168,7 +180,11 @@ export function HomeView({
             x.row.closesAt.getTime() <= cutoff,
         );
       } else if (selection.view === "Watchlist") {
-        out = out.filter((x) => favorites.has(x.row.id));
+        // Preserve favorites-array order (the user's chosen watchlist order).
+        const bySource = new Map(rowsWithSource.map((x) => [x.row.id, x]));
+        out = favorites
+          .map((id) => bySource.get(id))
+          .filter((x): x is (typeof rowsWithSource)[number] => Boolean(x));
       }
       // "All" — no view-level filter
     } else if (selection.type === "category") {
@@ -294,10 +310,27 @@ export function HomeView({
   }, [selected]);
 
   function toggleFavorite(id: string) {
+    setFavorites((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  /** Open the row-level context menu at a click position. */
+  function openContextMenu(row: ScreenerRow, e: React.MouseEvent) {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, rowId: row.id });
+  }
+
+  /** Move `fromId` to the position currently occupied by `toId`. Called by
+   *  the Watchlist drag-drop handlers. */
+  function reorderFavorites(fromId: string, toId: string) {
     setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const fromIdx = prev.indexOf(fromId);
+      const toIdx = prev.indexOf(toId);
+      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
       return next;
     });
   }
@@ -548,6 +581,7 @@ export function HomeView({
             onSelectRow={setSelectedId}
             selectedId={selectedId}
             highlightIdx={highlightIdx}
+            onContextMenuRow={(r, e) => openContextMenu(r, e)}
           />
         ) : (
           <>
@@ -555,22 +589,60 @@ export function HomeView({
               ref={gridRef}
               className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
             >
-              {filtered.slice(0, visible).map((x, idx) => (
-                <div
-                  key={x.row.id}
-                  data-card
-                  className={
-                    idx === highlightIdx
-                      ? "ring-2 ring-[var(--accent-primary)] ring-offset-2 ring-offset-[var(--bg)] rounded-xl"
-                      : ""
-                  }
-                >
-                  <EventCard
-                    row={x.row}
-                    onClick={() => setSelectedId(x.row.id)}
-                  />
-                </div>
-              ))}
+              {filtered.slice(0, visible).map((x, idx) => {
+                const isWatchlist =
+                  selection.type === "view" &&
+                  selection.view === "Watchlist";
+                return (
+                  <div
+                    key={x.row.id}
+                    data-card
+                    // Only Watchlist + Cards mode gets drag-to-reorder — in
+                    // every other view the row order is derived from the
+                    // sort, not the user, so drag would be misleading.
+                    draggable={isWatchlist}
+                    onDragStart={
+                      isWatchlist
+                        ? (e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", x.row.id);
+                          }
+                        : undefined
+                    }
+                    onDragOver={
+                      isWatchlist
+                        ? (e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                          }
+                        : undefined
+                    }
+                    onDrop={
+                      isWatchlist
+                        ? (e) => {
+                            e.preventDefault();
+                            const from = e.dataTransfer.getData("text/plain");
+                            if (from && from !== x.row.id) {
+                              reorderFavorites(from, x.row.id);
+                            }
+                          }
+                        : undefined
+                    }
+                    className={`${
+                      idx === highlightIdx
+                        ? "ring-2 ring-[var(--accent-primary)] ring-offset-2 ring-offset-[var(--bg)] rounded-xl"
+                        : ""
+                    } ${isWatchlist ? "cursor-grab active:cursor-grabbing" : ""}`}
+                    title={isWatchlist ? "Drag to reorder" : undefined}
+                  >
+                    <EventCard
+                      row={x.row}
+                      onClick={() => setSelectedId(x.row.id)}
+                      onContextMenu={(e) => openContextMenu(x.row, e)}
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             {visible < filtered.length && (
@@ -594,7 +666,7 @@ export function HomeView({
         selection={selection}
         onSelect={setSelection}
         counts={counts}
-        watchlistCount={favorites.size}
+        watchlistCount={favorites.length}
         screeners={screeners}
         onOpenScreenerBuilder={(existing) => {
           setBuilderTarget(existing);
@@ -625,7 +697,7 @@ export function HomeView({
               news={selectedNews}
               trades={selectedTrades}
               candidates={correlationCandidates}
-              isFavorite={selected ? favorites.has(selected.id) : false}
+              isFavorite={selected ? favoritesSet.has(selected.id) : false}
               onToggleFavorite={() => {
                 if (selected) toggleFavorite(selected.id);
               }}
@@ -656,7 +728,7 @@ export function HomeView({
             news={selectedNews}
             trades={selectedTrades}
             candidates={correlationCandidates}
-            isFavorite={favorites.has(selected.id)}
+            isFavorite={favoritesSet.has(selected.id)}
             onClose={() => setSelectedId(null)}
             onToggleFavorite={() => toggleFavorite(selected.id)}
             onSelectRow={setSelectedId}
@@ -665,6 +737,66 @@ export function HomeView({
       )}
 
       {showHelp && <ShortcutsModal onClose={() => setShowHelp(false)} />}
+
+      {contextMenu && (() => {
+        const target = rows.find((r) => r.id === contextMenu.rowId);
+        if (!target) return null;
+        const url =
+          target.polymarket?.url ??
+          target.kalshi?.url ??
+          "";
+        const isFav = favoritesSet.has(target.id);
+        const items: ContextMenuItem[] = [
+          {
+            key: "open",
+            label: "Open detail",
+            icon: "→",
+            hint: "⏎",
+            onClick: () => setSelectedId(target.id),
+          },
+          {
+            key: "fav",
+            label: isFav ? "Remove from watchlist" : "Add to watchlist",
+            icon: isFav ? "★" : "☆",
+            hint: "f",
+            onClick: () => toggleFavorite(target.id),
+          },
+          { key: "sep1", label: "", separator: true, onClick: () => {} },
+          {
+            key: "copy-url",
+            label: "Copy exchange URL",
+            icon: "⧉",
+            disabled: !url,
+            onClick: () => {
+              if (url) navigator.clipboard.writeText(url).catch(() => {});
+            },
+          },
+          {
+            key: "copy-q",
+            label: "Copy question",
+            icon: "T",
+            onClick: () => {
+              navigator.clipboard.writeText(target.question).catch(() => {});
+            },
+          },
+          { key: "sep2", label: "", separator: true, onClick: () => {} },
+          {
+            key: "alert",
+            label: "Set price alert",
+            icon: "!",
+            disabled: !target.polymarket?.yesPrice,
+            onClick: () => setSelectedId(target.id),
+          },
+        ];
+        return (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={items}
+            onClose={() => setContextMenu(null)}
+          />
+        );
+      })()}
 
       {builderOpen && (
         <ScreenerBuilder
@@ -744,6 +876,8 @@ function ShortcutsModal({ onClose }: { onClose: () => void }) {
     ["f", "Toggle favorite on highlighted market"],
     ["1", "Switch to Scanner view"],
     ["2", "Switch to Cards view"],
+    ["Right-click", "Context menu on any market"],
+    ["Drag", "Reorder cards in Watchlist view"],
     ["Esc", "Close panel / modal / sidebar"],
     [":", "Open command bar"],
     ["?", "Show this menu"],

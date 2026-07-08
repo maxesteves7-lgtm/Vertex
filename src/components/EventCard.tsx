@@ -44,9 +44,11 @@ function sourceStyle(source: Source) {
 export function EventCard({
   row,
   onClick,
+  onContextMenu,
 }: {
   row: ScreenerRow;
   onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   const source = getSource(row);
   const ss = sourceStyle(source);
@@ -71,6 +73,7 @@ export function EventCard({
   return (
     <button
       onClick={onClick}
+      onContextMenu={onContextMenu}
       className="card-hover text-left w-full bg-[var(--bg-elev)] border border-[var(--border-soft)] rounded-xl p-4 flex flex-col gap-3"
     >
       {/* Header: source badge + category */}

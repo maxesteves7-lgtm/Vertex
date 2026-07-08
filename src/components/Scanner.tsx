@@ -26,12 +26,15 @@ export function Scanner({
   onSelectRow,
   selectedId,
   highlightIdx,
+  onContextMenuRow,
 }: {
   rows: ScreenerRow[];
   onSelectRow: (id: string) => void;
   selectedId: string | null;
   /** Optional external highlight (e.g. j/k keyboard nav). */
   highlightIdx?: number;
+  /** Right-click on a row → parent decides what to do. */
+  onContextMenuRow?: (row: ScreenerRow, e: React.MouseEvent) => void;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("vol24h");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -119,6 +122,7 @@ export function Scanner({
                   key={r.id}
                   data-row
                   onClick={() => onSelectRow(r.id)}
+                  onContextMenu={(e) => onContextMenuRow?.(r, e)}
                   className={`border-b border-[var(--border-soft)] cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-[rgba(255,102,0,0.06)]"
