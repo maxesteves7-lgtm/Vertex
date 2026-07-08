@@ -66,7 +66,7 @@ export function OnboardingTour({ onClose }: { onClose: () => void }) {
           </div>
           <button
             onClick={() => close(false)}
-            className="font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)] hover:text-white"
+            className="font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)] hover:text-[var(--fg)]"
           >
             SKIP ×
           </button>
@@ -121,7 +121,7 @@ export function OnboardingTour({ onClose }: { onClose: () => void }) {
             <button
               onClick={prev}
               disabled={idx === 0}
-              className="px-3 py-1.5 border border-[var(--border)] rounded-sm font-mono text-[10px] tracking-[0.14em] text-[var(--fg-dim)] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 border border-[var(--border)] rounded-sm font-mono text-[10px] tracking-[0.14em] text-[var(--fg-dim)] hover:text-[var(--fg)] disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ← BACK
             </button>

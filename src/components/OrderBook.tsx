@@ -103,7 +103,7 @@ export function OrderBook({ tokenId }: { tokenId: string | null }) {
 
   if (!tokenId) {
     return (
-      <div className="border border-[var(--border)] bg-black h-24 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
+      <div className="border border-[var(--border)] bg-[var(--bg)] h-24 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
         NO POLYMARKET TOKEN — ORDER BOOK UNAVAILABLE
       </div>
     );
@@ -151,16 +151,16 @@ export function OrderBook({ tokenId }: { tokenId: string | null }) {
       </div>
 
       {error && !book ? (
-        <div className="border border-[var(--border)] bg-black h-24 flex items-center justify-center text-[var(--accent-down)] text-[11px] font-mono tracking-wider">
+        <div className="border border-[var(--border)] bg-[var(--bg)] h-24 flex items-center justify-center text-[var(--accent-down)] text-[11px] font-mono tracking-wider">
           FEED ERROR · {error}
         </div>
       ) : !book && loading ? (
-        <div className="border border-[var(--border)] bg-black h-24 flex items-center justify-center text-[var(--fg-dim)] text-[11px] font-mono tracking-wider">
+        <div className="border border-[var(--border)] bg-[var(--bg)] h-24 flex items-center justify-center text-[var(--fg-dim)] text-[11px] font-mono tracking-wider">
           LOADING…
         </div>
       ) : !book ||
         (book.bids.length === 0 && book.asks.length === 0) ? (
-        <div className="border border-[var(--border)] bg-black h-24 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
+        <div className="border border-[var(--border)] bg-[var(--bg)] h-24 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
           NO OPEN ORDERS
         </div>
       ) : (
@@ -211,7 +211,7 @@ function Ladder({
   });
 
   return (
-    <div className="border border-[var(--border)] bg-black">
+    <div className="border border-[var(--border)] bg-[var(--bg)]">
       <div className="grid grid-cols-2 divide-x divide-[var(--border)]">
         {/* BID side */}
         <div>
@@ -417,7 +417,7 @@ function DepthChart({
   const midX = mid !== null ? xOf(mid) : null;
 
   return (
-    <div className="border border-[var(--border)] bg-black">
+    <div className="border border-[var(--border)] bg-[var(--bg)]">
       <div className="px-2 py-1 border-b border-[var(--border)] bg-[var(--bg-elev)] font-mono text-[9px] tracking-[0.14em] text-[var(--fg-mute)] flex items-center justify-between">
         <span>DEPTH (CUMULATIVE SHARES)</span>
         <span>SHARES @ MID{mid !== null ? ` ${(mid * 100).toFixed(2)}%` : ""}</span>

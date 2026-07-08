@@ -101,7 +101,7 @@ export function CorrelatedMarkets({
 
   if (!seedTokenId) {
     return (
-      <div className="border border-[var(--border)] bg-black h-24 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
+      <div className="border border-[var(--border)] bg-[var(--bg)] h-24 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
         NO POLYMARKET TOKEN — CORRELATIONS UNAVAILABLE
       </div>
     );
@@ -119,7 +119,7 @@ export function CorrelatedMarkets({
               className={`px-2 py-0.5 transition-colors ${
                 window === w
                   ? "bg-[var(--accent-primary)] text-black"
-                  : "text-[var(--fg-dim)] hover:text-white border-l border-[var(--border)] first:border-l-0"
+                  : "text-[var(--fg-dim)] hover:text-[var(--fg)] border-l border-[var(--border)] first:border-l-0"
               }`}
             >
               {w.toUpperCase()}
@@ -173,7 +173,7 @@ function Table({
 }) {
   if (rows.length === 0) return null;
   return (
-    <div className="border border-[var(--border)] bg-black">
+    <div className="border border-[var(--border)] bg-[var(--bg)]">
       <div className="px-2 py-1 border-b border-[var(--border)] bg-[var(--bg-elev)] font-mono text-[9px] tracking-[0.16em] text-[var(--fg-mute)] flex items-center justify-between">
         <span>{label}</span>
         <span>ρ · N</span>
@@ -238,7 +238,7 @@ function Msg({
         : "text-[var(--fg-dim)]";
   return (
     <div
-      className={`border border-[var(--border)] bg-black h-16 flex items-center justify-center text-[11px] font-mono tracking-wider ${color}`}
+      className={`border border-[var(--border)] bg-[var(--bg)] h-16 flex items-center justify-center text-[11px] font-mono tracking-wider ${color}`}
     >
       {children}
     </div>

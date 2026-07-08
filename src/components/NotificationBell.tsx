@@ -204,7 +204,7 @@ export function NotificationBell() {
                         </span>
                         <span>{fmtSmartTime(new Date(n.triggeredAt))}</span>
                       </div>
-                      <div className="text-[12px] text-white font-semibold leading-snug">
+                      <div className="text-[12px] text-[var(--fg)] font-semibold leading-snug">
                         {n.title}
                       </div>
                       <div className="text-[11px] text-[var(--fg-dim)] mt-0.5">

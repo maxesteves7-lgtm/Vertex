@@ -95,7 +95,7 @@ export function ContextMenu({
                   ? "text-[var(--fg-mute)] cursor-not-allowed"
                   : it.danger
                     ? "text-[var(--accent-down)] hover:bg-[var(--bg-row)]"
-                    : "text-[var(--fg)] hover:bg-[var(--bg-row)] hover:text-white"
+                    : "text-[var(--fg)] hover:bg-[var(--bg-row)] hover:text-[var(--fg)]"
               }`}
             >
               {it.icon && (

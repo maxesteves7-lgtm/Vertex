@@ -120,7 +120,7 @@ export function HeatmapView() {
     <section className="flex-1 flex flex-col px-4 md:px-6 py-5 min-h-0">
       <div className="flex items-end justify-between flex-wrap gap-4 mb-5">
         <div>
-          <h1 className="text-[20px] font-semibold text-white tracking-tight">
+          <h1 className="text-[20px] font-semibold text-[var(--fg)] tracking-tight">
             Correlation Heatmap
           </h1>
           <p className="text-[12px] text-[var(--fg-dim)] mt-0.5">
@@ -133,7 +133,7 @@ export function HeatmapView() {
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="bg-[var(--bg-elev)] border border-[var(--border)] rounded-sm px-3 py-1.5 text-[12px] text-white outline-none font-mono tracking-wider"
+            className="bg-[var(--bg-elev)] border border-[var(--border)] rounded-sm px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none font-mono tracking-wider"
           >
             <option value="All">All Categories</option>
             {CATEGORY_TREE.map((n) => (
@@ -151,7 +151,7 @@ export function HeatmapView() {
                 className={`px-2.5 py-1 transition-colors ${
                   timeWindow === w
                     ? "bg-[var(--accent-primary)] text-black"
-                    : "text-[var(--fg-dim)] hover:text-white border-l border-[var(--border)] first:border-l-0"
+                    : "text-[var(--fg-dim)] hover:text-[var(--fg)] border-l border-[var(--border)] first:border-l-0"
                 }`}
               >
                 {w.toUpperCase()}
@@ -190,7 +190,7 @@ export function HeatmapView() {
               <button
                 onClick={primeBackfill}
                 disabled={priming}
-                className="px-2.5 py-1 border border-[var(--border)] rounded-sm hover:text-white disabled:opacity-50"
+                className="px-2.5 py-1 border border-[var(--border)] rounded-sm hover:text-[var(--fg)] disabled:opacity-50"
               >
                 {priming ? "BACKFILLING…" : "RUN BACKFILL"}
               </button>
@@ -233,7 +233,7 @@ function MatrixGrid({
   const H = LABEL_H + N * CELL + 8;
 
   return (
-    <div className="relative overflow-auto border border-[var(--border)] bg-black">
+    <div className="relative overflow-auto border border-[var(--border)] bg-[var(--bg)]">
       <svg viewBox={`0 0 ${W} ${H}`} style={{ minWidth: W, height: H }}>
         {/* X labels — rotated */}
         {markets.map((m, i) => {
@@ -335,10 +335,10 @@ function MatrixGrid({
           }}
         >
           <div className="text-[var(--fg-mute)] mb-1">X vs Y</div>
-          <div className="text-white truncate">
+          <div className="text-[var(--fg)] truncate">
             X: {markets[hover.j].question}
           </div>
-          <div className="text-white truncate mb-1">
+          <div className="text-[var(--fg)] truncate mb-1">
             Y: {markets[hover.i].question}
           </div>
           <div className="flex items-center justify-between mt-1">
@@ -436,7 +436,7 @@ function Msg({
     tone === "down" ? "text-[var(--accent-down)]" : "text-[var(--fg-dim)]";
   return (
     <div
-      className={`border border-[var(--border)] bg-black h-24 flex items-center justify-center text-[11px] font-mono tracking-wider ${color}`}
+      className={`border border-[var(--border)] bg-[var(--bg)] h-24 flex items-center justify-center text-[11px] font-mono tracking-wider ${color}`}
     >
       {children}
     </div>

@@ -43,7 +43,7 @@ export function ResolutionTracker({
     <section className="flex-1 flex flex-col px-4 md:px-6 py-5">
       <div className="flex items-end justify-between flex-wrap gap-4 mb-5">
         <div>
-          <h1 className="text-[20px] font-semibold text-white tracking-tight">
+          <h1 className="text-[20px] font-semibold text-[var(--fg)] tracking-tight">
             Recently Resolved
           </h1>
           <p className="text-[12px] text-[var(--fg-dim)] mt-0.5">
@@ -74,7 +74,7 @@ export function ResolutionTracker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter…"
-            className="bg-[var(--bg-elev)] border border-transparent focus:border-[var(--border)] rounded-full pl-9 pr-4 py-1.5 text-[13px] w-64 outline-none text-white placeholder:text-[var(--fg-mute)]"
+            className="bg-[var(--bg-elev)] border border-transparent focus:border-[var(--border)] rounded-full pl-9 pr-4 py-1.5 text-[13px] w-64 outline-none text-[var(--fg)] placeholder:text-[var(--fg-mute)]"
           />
         </div>
 
@@ -98,7 +98,7 @@ export function ResolutionTracker({
           onChange={(e) =>
             setCategory(e.target.value as Category | "All")
           }
-          className="bg-[var(--bg-elev)] border border-[var(--border)] rounded-full px-3 py-1.5 text-[12px] text-white outline-none"
+          className="bg-[var(--bg-elev)] border border-[var(--border)] rounded-full px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none"
         >
           {(["All", ...CATEGORIES.filter((c) => c !== "All")] as const).map(
             (c) => (
@@ -135,7 +135,7 @@ export function ResolutionTracker({
                     <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--bg-row)] text-[var(--fg-dim)]">
                       {r.bucket}
                     </span>
-                    <span className="truncate text-white">{r.question}</span>
+                    <span className="truncate text-[var(--fg)]">{r.question}</span>
                   </div>
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-[var(--fg-dim)]">
@@ -176,7 +176,7 @@ export function ResolutionTracker({
 function Pill({
   label,
   value,
-  color = "text-white",
+  color = "text-[var(--fg)]",
 }: {
   label: string;
   value: string;
@@ -207,7 +207,7 @@ function Chip({
       className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${
         active
           ? "bg-white text-black border-white"
-          : "bg-[var(--bg-elev)] text-[var(--fg-dim)] border-[var(--border)] hover:text-white hover:border-[#3a3a3a]"
+          : "bg-[var(--bg-elev)] text-[var(--fg-dim)] border-[var(--border)] hover:text-[var(--fg)] hover:border-[#3a3a3a]"
       }`}
     >
       {children}

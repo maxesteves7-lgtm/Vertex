@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Futurist — institutional terminal palette (Bloomberg-inspired) */
+  /* Futurist — DARK mode (default). Bloomberg-inspired. */
   --bg: #000000; /* true black */
   --bg-elev: #0f0f0f; /* primary panel surface */
   --bg-panel: #111111; /* secondary panel surface */
@@ -31,6 +31,37 @@
   --src-polymarket: #6e56cf;
   --src-kalshi: #14b8a6;
   --src-both: #ff6600;
+}
+
+/**
+ * LIGHT mode — activated when the root <html> element has class="light".
+ * The theme toggle in TopNav writes/removes that class, and a small inline
+ * <script> in layout.tsx applies it before hydration so we don't flash
+ * dark → light on load. Accents (orange, green, red) stay the same; only
+ * the neutral layers flip.
+ */
+html.light {
+  --bg: #ffffff;
+  --bg-elev: #f6f7f9;
+  --bg-panel: #fafbfc;
+  --bg-row: #f0f1f4;
+  --bg-hover: #e6e8ec;
+  --bg-active: #ebedf0;
+
+  --border: #d9dde3;
+  --border-soft: #e5e8ec;
+  --border-strong: #b8bec7;
+
+  --fg: #0f1115;
+  --fg-dim: #4a5057;
+  --fg-mute: #8a9099;
+
+  /* Slightly darker greens on white to preserve contrast */
+  --accent-up: #0a8f00;
+  --accent-buy: #0a8f00;
+
+  --src-polymarket: #5a44b8;
+  --src-kalshi: #0d8a7a;
 }
 
 @theme inline {

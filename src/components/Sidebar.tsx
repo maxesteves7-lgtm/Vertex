@@ -101,8 +101,8 @@ export function Sidebar({
                 }}
                 className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-colors ${
                   active
-                    ? "bg-[var(--bg-elev)] text-white"
-                    : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-white"
+                    ? "bg-[var(--bg-elev)] text-[var(--fg)]"
+                    : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-[var(--fg)]"
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -143,8 +143,8 @@ export function Sidebar({
                   }}
                   className={`flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-left truncate ${
                     active
-                      ? "bg-[var(--bg-elev)] text-white"
-                      : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-white"
+                      ? "bg-[var(--bg-elev)] text-[var(--fg)]"
+                      : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-[var(--fg)]"
                   }`}
                 >
                   <span className="text-[var(--accent-primary)] text-[12px]">
@@ -159,7 +159,7 @@ export function Sidebar({
                   }}
                   aria-label="Edit screener"
                   title="Edit"
-                  className="px-1.5 text-[var(--fg-mute)] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="px-1.5 text-[var(--fg-mute)] hover:text-[var(--fg)] opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   ✎
                 </button>
@@ -223,10 +223,10 @@ export function Sidebar({
                     }}
                     className={`flex-1 flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-colors text-left ${
                       bucketActive
-                        ? "bg-[var(--bg-elev)] text-white"
+                        ? "bg-[var(--bg-elev)] text-[var(--fg)]"
                         : bucketHasSelection
-                          ? "text-white hover:bg-[var(--bg-elev)]"
-                          : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-white"
+                          ? "text-[var(--fg)] hover:bg-[var(--bg-elev)]"
+                          : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-[var(--fg)]"
                     }`}
                   >
                     <span>{node.display}</span>
@@ -238,7 +238,7 @@ export function Sidebar({
                     <button
                       onClick={() => toggle(node.bucket)}
                       aria-label={isOpen ? "Collapse" : "Expand"}
-                      className="px-2 text-[var(--fg-mute)] hover:text-white"
+                      className="px-2 text-[var(--fg-mute)] hover:text-[var(--fg)]"
                     >
                       <span
                         className="inline-block transition-transform"
@@ -272,8 +272,8 @@ export function Sidebar({
                           }}
                           className={`w-full text-left px-2 py-1 rounded-md text-[13px] transition-colors ${
                             subActive
-                              ? "bg-[var(--bg-elev)] text-white"
-                              : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-white"
+                              ? "bg-[var(--bg-elev)] text-[var(--fg)]"
+                              : "text-[var(--fg-dim)] hover:bg-[var(--bg-elev)] hover:text-[var(--fg)]"
                           }`}
                         >
                           {s.display}

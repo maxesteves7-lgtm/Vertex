@@ -483,12 +483,12 @@ export function HomeView({
               ☰
             </button>
             <div>
-              <h1 className="text-[20px] font-semibold text-white tracking-tight">
+              <h1 className="text-[20px] font-semibold text-[var(--fg)] tracking-tight">
                 {heading}
               </h1>
               <p className="text-[12px] text-[var(--fg-dim)] mt-0.5">
                 {filtered.length.toLocaleString()} events ·{" "}
-                <span className="text-white">
+                <span className="text-[var(--fg)]">
                   ${(totalVol / 1_000_000).toFixed(1)}M
                 </span>{" "}
                 24h volume
@@ -503,7 +503,7 @@ export function HomeView({
                 className={`px-2.5 py-1 transition-colors ${
                   viewMode === "scanner"
                     ? "bg-[var(--accent-primary)] text-black"
-                    : "text-[var(--fg-dim)] hover:text-white"
+                    : "text-[var(--fg-dim)] hover:text-[var(--fg)]"
                 }`}
                 title="Dense terminal table (1)"
               >
@@ -514,7 +514,7 @@ export function HomeView({
                 className={`px-2.5 py-1 border-l border-[var(--border)] transition-colors ${
                   viewMode === "cards"
                     ? "bg-[var(--accent-primary)] text-black"
-                    : "text-[var(--fg-dim)] hover:text-white"
+                    : "text-[var(--fg-dim)] hover:text-[var(--fg)]"
                 }`}
                 title="Card grid (2)"
               >
@@ -544,7 +544,7 @@ export function HomeView({
             </button>
             <button
               onClick={() => setShowHelp(true)}
-              className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] hover:text-white border border-[var(--border)] rounded-sm px-2.5 py-1"
+              className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] hover:text-[var(--fg)] border border-[var(--border)] rounded-sm px-2.5 py-1"
               title="Keyboard shortcuts"
             >
               ?
@@ -664,7 +664,7 @@ export function HomeView({
               <div className="flex justify-center mt-6">
                 <button
                   onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                  className="px-5 py-2 text-sm rounded-full bg-[var(--bg-elev)] border border-[var(--border)] text-white hover:bg-[var(--bg-hover)]"
+                  className="px-5 py-2 text-sm rounded-full bg-[var(--bg-elev)] border border-[var(--border)] text-[var(--fg)] hover:bg-[var(--bg-hover)]"
                 >
                   Load more · {filtered.length - visible} remaining
                 </button>
@@ -855,7 +855,7 @@ function Chip({
       className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${
         active
           ? "bg-white text-black border-white"
-          : "bg-[var(--bg-elev)] text-[var(--fg-dim)] border-[var(--border)] hover:text-white hover:border-[#3a3a3a]"
+          : "bg-[var(--bg-elev)] text-[var(--fg-dim)] border-[var(--border)] hover:text-[var(--fg)] hover:border-[#3a3a3a]"
       }`}
     >
       {children}
@@ -879,7 +879,7 @@ function EmptyState({ selection }: { selection: SidebarSelection }) {
   }
   return (
     <div className="text-center text-[var(--fg-dim)] py-16 border border-dashed border-[var(--border)] rounded-xl">
-      <div className="text-sm text-white">{title}</div>
+      <div className="text-sm text-[var(--fg)]">{title}</div>
       <div className="text-[12px] mt-1">{hint}</div>
     </div>
   );
@@ -908,12 +908,12 @@ function ShortcutsModal({ onClose }: { onClose: () => void }) {
       />
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-w-[92vw] bg-[var(--bg-elev)] border border-[var(--border)] rounded-xl z-50 p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white">
+          <h2 className="text-sm font-semibold text-[var(--fg)]">
             Keyboard shortcuts
           </h2>
           <button
             onClick={onClose}
-            className="text-[var(--fg-dim)] hover:text-white text-lg"
+            className="text-[var(--fg-dim)] hover:text-[var(--fg)] text-lg"
             aria-label="Close"
           >
             ×

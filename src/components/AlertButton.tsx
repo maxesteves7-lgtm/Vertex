@@ -78,7 +78,7 @@ export function AlertButton({
   }
 
   return (
-    <div className="border border-[var(--border)] bg-black p-3">
+    <div className="border border-[var(--border)] bg-[var(--bg)] p-3">
       <div className="flex items-center gap-2 mb-2">
         <select
           value={direction}

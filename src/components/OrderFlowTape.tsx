@@ -65,7 +65,7 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
       {/* Header summary */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-5">
         <div>
-          <h1 className="text-[20px] font-semibold text-white tracking-tight">
+          <h1 className="text-[20px] font-semibold text-[var(--fg)] tracking-tight">
             Order Flow
           </h1>
           <p className="text-[12px] text-[var(--fg-dim)] mt-0.5">
@@ -107,7 +107,7 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter by market…"
-            className="bg-[var(--bg-elev)] border border-transparent focus:border-[var(--border)] rounded-full pl-9 pr-4 py-1.5 text-[13px] w-64 outline-none text-white placeholder:text-[var(--fg-mute)]"
+            className="bg-[var(--bg-elev)] border border-transparent focus:border-[var(--border)] rounded-full pl-9 pr-4 py-1.5 text-[13px] w-64 outline-none text-[var(--fg)] placeholder:text-[var(--fg-mute)]"
           />
         </div>
 
@@ -124,7 +124,7 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
                 className={`px-3 py-1 text-[11px] rounded-full transition-colors ${
                   active
                     ? "bg-white text-black"
-                    : "bg-[var(--bg-elev)] text-[var(--fg-dim)] hover:text-white"
+                    : "bg-[var(--bg-elev)] text-[var(--fg-dim)] hover:text-[var(--fg)]"
                 }`}
               >
                 {opt.label}
@@ -141,7 +141,7 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
                 ? "text-[var(--accent-up)]"
                 : s === "SELL"
                   ? "text-[var(--accent-down)]"
-                  : "text-white";
+                  : "text-[var(--fg)]";
             return (
               <button
                 key={s}
@@ -149,7 +149,7 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
                 className={`px-3 py-1 text-[11px] rounded-full transition-colors ${
                   active
                     ? `bg-[var(--bg-row)] ${accent}`
-                    : `bg-[var(--bg-elev)] text-[var(--fg-dim)] hover:text-white`
+                    : `bg-[var(--bg-elev)] text-[var(--fg-dim)] hover:text-[var(--fg)]`
                 }`}
               >
                 {s}
@@ -214,7 +214,7 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`truncate inline-block max-w-full hover:text-[var(--accent-primary)] ${
-                          isWhale ? "text-white font-semibold" : "text-[var(--fg)]"
+                          isWhale ? "text-[var(--fg)] font-semibold" : "text-[var(--fg)]"
                         }`}
                         title={t.marketQuestion}
                       >
@@ -227,7 +227,7 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
                   </td>
                   <td
                     className={`px-3 py-2 text-right font-semibold tabular-nums ${
-                      isWhale ? "text-[var(--accent-amber)]" : "text-white"
+                      isWhale ? "text-[var(--accent-amber)]" : "text-[var(--fg)]"
                     }`}
                   >
                     {fmtUsd(t.sizeUsd, { compact: true })}
@@ -278,7 +278,7 @@ function StatPill({
         ? "text-[var(--accent-up)]"
         : accent === "down"
           ? "text-[var(--accent-down)]"
-          : "text-white";
+          : "text-[var(--fg)]";
   return (
     <div className="px-3 py-1.5 rounded-full bg-[var(--bg-elev)] border border-[var(--border-soft)] flex items-center gap-2">
       <span className="text-[var(--fg-dim)] uppercase text-[10px] tracking-wider">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NotificationBell } from "./NotificationBell";
+import { ThemeToggle } from "./ThemeToggle";
 
 /**
  * Terminal-style top nav. Mono Futurist wordmark with the orange terminal
@@ -49,7 +50,7 @@ export function TopNav() {
         <span className="text-[var(--accent-primary)] text-[18px] font-mono leading-none">
           ▍
         </span>
-        <span className="font-mono font-semibold tracking-[0.16em] text-[13px] text-white">
+        <span className="font-mono font-semibold tracking-[0.16em] text-[13px] text-[var(--fg)]">
           FUTURIST
         </span>
       </Link>
@@ -64,7 +65,7 @@ export function TopNav() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="search markets…"
-            className="w-full bg-[var(--bg-elev)] border border-[var(--border-soft)] focus:border-[var(--accent-primary)] rounded-sm pl-7 pr-3 py-1.5 text-[12px] font-mono text-white placeholder:text-[var(--fg-mute)] outline-none transition-colors"
+            className="w-full bg-[var(--bg-elev)] border border-[var(--border-soft)] focus:border-[var(--accent-primary)] rounded-sm pl-7 pr-3 py-1.5 text-[12px] font-mono text-[var(--fg)] placeholder:text-[var(--fg-mute)] outline-none transition-colors"
           />
         </div>
       </form>
@@ -81,7 +82,7 @@ export function TopNav() {
               className={`px-3 flex items-center font-mono text-[10px] tracking-[0.16em] transition-colors relative ${
                 active
                   ? "text-[var(--accent-primary)]"
-                  : "text-[var(--fg-dim)] hover:text-white"
+                  : "text-[var(--fg-dim)] hover:text-[var(--fg)]"
               }`}
             >
               {l.label}
@@ -103,6 +104,9 @@ export function TopNav() {
         </span>
         <span className="text-[var(--fg-dim)]">{clock}</span>
       </div>
+
+      {/* Theme toggle */}
+      <ThemeToggle />
 
       {/* Notifications */}
       <NotificationBell />

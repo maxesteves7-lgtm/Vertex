@@ -115,7 +115,7 @@ export function ScreenerBuilder({
           </div>
           <button
             onClick={onClose}
-            className="text-[var(--fg-dim)] hover:text-white text-lg leading-none w-6 h-6"
+            className="text-[var(--fg-dim)] hover:text-[var(--fg)] text-lg leading-none w-6 h-6"
             aria-label="Close"
           >
             ×
@@ -129,7 +129,7 @@ export function ScreenerBuilder({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Crypto ≥ $50k · closing this week"
-              className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-1.5 text-[13px] text-white placeholder:text-[var(--fg-mute)] outline-none"
+              className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-1.5 text-[13px] text-[var(--fg)] placeholder:text-[var(--fg-mute)] outline-none"
               maxLength={80}
             />
           </Field>
@@ -187,7 +187,7 @@ export function ScreenerBuilder({
                   }));
                 }}
                 placeholder="0"
-                className="flex-1 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-1.5 text-[13px] font-mono tabular-nums text-white placeholder:text-[var(--fg-mute)] outline-none"
+                className="flex-1 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-1.5 text-[13px] font-mono tabular-nums text-[var(--fg)] placeholder:text-[var(--fg-mute)] outline-none"
               />
             </div>
           </Field>
@@ -255,7 +255,7 @@ export function ScreenerBuilder({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 border border-[var(--border)] rounded-sm font-mono text-[10px] tracking-[0.14em] text-[var(--fg-dim)] hover:text-white"
+              className="px-3 py-1.5 border border-[var(--border)] rounded-sm font-mono text-[10px] tracking-[0.14em] text-[var(--fg-dim)] hover:text-[var(--fg)]"
             >
               CANCEL
             </button>
@@ -314,7 +314,7 @@ function Chip({
       className={`px-2.5 py-1 rounded-sm font-mono text-[10px] tracking-[0.12em] border transition-colors ${
         active
           ? "bg-[var(--accent-primary)] text-black border-[var(--accent-primary)]"
-          : "bg-[var(--bg)] text-[var(--fg-dim)] border-[var(--border)] hover:text-white hover:border-[var(--fg-mute)]"
+          : "bg-[var(--bg)] text-[var(--fg-dim)] border-[var(--border)] hover:text-[var(--fg)] hover:border-[var(--fg-mute)]"
       }`}
     >
       {children}
@@ -344,7 +344,7 @@ function PctInput({
         else onChange(Number(v) / 100);
       }}
       placeholder={placeholder}
-      className="w-16 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-2 py-1.5 text-[13px] font-mono tabular-nums text-white placeholder:text-[var(--fg-mute)] outline-none text-right"
+      className="w-16 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-2 py-1.5 text-[13px] font-mono tabular-nums text-[var(--fg)] placeholder:text-[var(--fg-mute)] outline-none text-right"
     />
   );
 }

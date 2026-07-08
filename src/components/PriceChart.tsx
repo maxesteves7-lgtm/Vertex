@@ -167,7 +167,7 @@ export function PriceChart({ tokenId }: { tokenId: string | null }) {
 
   if (!tokenId) {
     return (
-      <div className="border border-[var(--border)] bg-black h-56 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
+      <div className="border border-[var(--border)] bg-[var(--bg)] h-56 flex items-center justify-center text-[var(--fg-mute)] text-[11px] font-mono tracking-wider">
         NO POLYMARKET TOKEN — CHART UNAVAILABLE
       </div>
     );
@@ -234,7 +234,7 @@ export function PriceChart({ tokenId }: { tokenId: string | null }) {
       </div>
 
       {/* Chart body */}
-      <div className="border border-[var(--border)] bg-black relative">
+      <div className="border border-[var(--border)] bg-[var(--bg)] relative">
         {loading && history === null && (
           <div className="h-56 flex items-center justify-center text-[var(--fg-dim)] text-[11px] font-mono tracking-wider">
             LOADING…

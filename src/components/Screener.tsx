@@ -137,7 +137,7 @@ export function Screener({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search markets…"
-          className="bg-black border border-[var(--border)] px-3 py-1.5 text-xs w-56 rounded-sm focus:outline-none focus:border-[var(--accent-primary)] placeholder:text-[var(--fg-mute)]"
+          className="bg-[var(--bg)] border border-[var(--border)] px-3 py-1.5 text-xs w-56 rounded-sm focus:outline-none focus:border-[var(--accent-primary)] placeholder:text-[var(--fg-mute)]"
         />
 
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -176,7 +176,7 @@ export function Screener({
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="bg-black border border-[var(--border)] px-2 py-1 text-xs rounded-sm focus:outline-none focus:border-[var(--accent-primary)]"
+              className="bg-[var(--bg)] border border-[var(--border)] px-2 py-1 text-xs rounded-sm focus:outline-none focus:border-[var(--accent-primary)]"
             >
               <option value="volume">Volume 24h</option>
               <option value="spread">Spread</option>

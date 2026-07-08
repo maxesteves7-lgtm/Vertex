@@ -23,6 +23,19 @@ export const metadata: Metadata = {
     "Institutional-grade cross-exchange prediction market terminal — Kalshi + Polymarket.",
 };
 
+/**
+ * Inline script that runs BEFORE React hydrates. Reads the stored theme
+ * from localStorage and applies the `light` class to <html> so the first
+ * paint matches the user's preference — no flash-of-dark on light-mode
+ * loads.
+ */
+const themeBootstrap = `
+try {
+  var t = localStorage.getItem('vertex.theme.v1');
+  if (t === 'light') document.documentElement.classList.add('light');
+} catch (e) {}
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -31,6 +44,9 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--fg)]">
         <Suspense fallback={<div className="h-14 border-b border-[var(--border)]" />}>
           <TopNav />

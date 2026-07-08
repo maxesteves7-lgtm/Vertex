@@ -76,7 +76,7 @@ export function BottomStrip({
               className={`relative font-mono text-[10px] tracking-[0.18em] px-3 py-2 transition-colors ${
                 active
                   ? "text-[var(--accent-primary)]"
-                  : "text-[var(--fg-dim)] hover:text-white"
+                  : "text-[var(--fg-dim)] hover:text-[var(--fg)]"
               }`}
             >
               {label}{" "}

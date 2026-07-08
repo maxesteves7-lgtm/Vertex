@@ -101,7 +101,7 @@ export function DetailPane({
             {isFavorite ? "★" : "☆"}
           </button>
         </div>
-        <h2 className="text-[14px] font-semibold text-white leading-snug">
+        <h2 className="text-[14px] font-semibold text-[var(--fg)] leading-snug">
           {row.question}
         </h2>
       </div>

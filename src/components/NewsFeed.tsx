@@ -43,7 +43,7 @@ export function NewsFeed({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search headlines…"
-          className="bg-black border border-[var(--border)] px-3 py-1.5 text-xs w-56 rounded-sm focus:outline-none focus:border-[var(--accent-primary)] placeholder:text-[var(--fg-mute)]"
+          className="bg-[var(--bg)] border border-[var(--border)] px-3 py-1.5 text-xs w-56 rounded-sm focus:outline-none focus:border-[var(--accent-primary)] placeholder:text-[var(--fg-mute)]"
         />
         <div className="flex items-center gap-1.5">
           {(["ALL", "POS", "NEG"] as const).map((f) => {
