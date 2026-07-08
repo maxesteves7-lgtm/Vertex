@@ -22,6 +22,8 @@ import { DetailPane } from "./DetailPane";
 import { BottomStrip } from "./BottomStrip";
 import { ScreenerBuilder } from "./ScreenerBuilder";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { OnboardingTour } from "./OnboardingTour";
+import { hasSeenTour } from "@/lib/onboarding";
 import { exportRowsToCsv } from "@/lib/csv";
 import {
   deleteScreener,
@@ -82,6 +84,12 @@ export function HomeView({
     y: number;
     rowId: string;
   } | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  // First-run: auto-open the terminal primer if the user hasn't dismissed it
+  useEffect(() => {
+    if (!hasSeenTour()) setTourOpen(true);
+  }, []);
 
   // Debounce the URL search term so each keystroke doesn't re-filter 5k rows
   const [debouncedQ, setDebouncedQ] = useState(urlQ);
@@ -528,6 +536,13 @@ export function HomeView({
               </button>
             )}
             <button
+              onClick={() => setTourOpen(true)}
+              className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] hover:text-[var(--accent-primary)] border border-[var(--border)] rounded-sm px-2.5 py-1"
+              title="Take the terminal tour"
+            >
+              TOUR
+            </button>
+            <button
               onClick={() => setShowHelp(true)}
               className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] hover:text-white border border-[var(--border)] rounded-sm px-2.5 py-1"
               title="Keyboard shortcuts"
@@ -737,6 +752,8 @@ export function HomeView({
       )}
 
       {showHelp && <ShortcutsModal onClose={() => setShowHelp(false)} />}
+
+      {tourOpen && <OnboardingTour onClose={() => setTourOpen(false)} />}
 
       {contextMenu && (() => {
         const target = rows.find((r) => r.id === contextMenu.rowId);
