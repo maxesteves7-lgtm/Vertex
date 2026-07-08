@@ -28,6 +28,14 @@ const RULES: Array<[RegExp, Category]> = [
   // Point spread, e.g. "Knicks (-1.5)", "Spurs (-4.5)"
   [/\(\s*[+\-]\s*\d+(\.\d+)?\s*\)/, "Sports"],
 
+  // "Exact Score:" — Polymarket phrases soccer/hockey score props this way.
+  // Must come before the country-name Politics fallback catches "France".
+  [/\bexact score\b/i, "Sports"],
+  // Score-shaped titles: "Team A N - N Team B" (allow em/en/hyphen dashes).
+  [/\b\w[\w.]*\s+\d+\s*[-–—]\s*\d+\s+\w[\w.]/i, "Sports"],
+  // "First to score", "First goal", "Corner kick", etc. — pure sports props
+  [/\b(first goal|first to score|corner kick|penalty kick|free kick|throw-?in|offside|red card|yellow card|VAR|extra time|stoppage time|shootout|penalty shootout|goalkeeper|clean sheet|hat-?trick|brace|assist|own goal)\b/i, "Sports"],
+
   // Over/under, e.g. "O/U 218.5", "Over 47.5", "Under 8.5"
   [/\b(O\/U|over\/under|over\s+\d+\.?\d*|under\s+\d+\.?\d*)\b/i, "Sports"],
 

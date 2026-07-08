@@ -236,7 +236,7 @@ export function Screener({
                       {r.question}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 bg-[#0f1d22] text-[var(--accent-primary)] border border-[#173039] rounded-sm">
+                      <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 bg-[rgba(255,102,0,0.08)] text-[var(--accent-primary)] border border-[rgba(255,102,0,0.3)] rounded-sm">
                         {r.bucket}
                       </span>
                       {r.closesAt && (

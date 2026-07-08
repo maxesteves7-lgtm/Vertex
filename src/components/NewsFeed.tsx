@@ -123,7 +123,7 @@ export function NewsFeed({
                     return (
                       <span
                         key={id}
-                        className="text-[10px] px-1.5 py-0.5 bg-[#0f1d22] text-[var(--accent-primary)] border border-[#173039] rounded-sm max-w-[260px] truncate"
+                        className="text-[10px] px-1.5 py-0.5 bg-[rgba(255,102,0,0.08)] text-[var(--accent-primary)] border border-[rgba(255,102,0,0.3)] rounded-sm max-w-[260px] truncate"
                         title={m.question}
                       >
                         {m.question}
