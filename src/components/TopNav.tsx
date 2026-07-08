@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { NotificationBell } from "./NotificationBell";
 
 /**
  * Terminal-style top nav. Mono Futurist wordmark with the orange terminal
@@ -102,6 +103,9 @@ export function TopNav() {
         </span>
         <span className="text-[var(--fg-dim)]">{clock}</span>
       </div>
+
+      {/* Notifications */}
+      <NotificationBell />
 
       {/* User */}
       <button

@@ -167,6 +167,7 @@ enum AlertRuleType {
 enum AlertChannel {
   EMAIL
   WEBHOOK
+  IN_APP
 }
 
 model Alert {
@@ -190,8 +191,31 @@ model Alert {
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   market Market? @relation(fields: [marketId], references: [id], onDelete: SetNull)
 
+  notifications Notification[]
+
   @@index([userId])
   @@index([marketId])
   @@index([exchange, externalMarketId])
   @@index([isActive])
+}
+
+/// A fired alert instance surfaced in the in-app notification bell.
+/// Written by the alerts/check cron when an alert with channel IN_APP
+/// triggers. Persisted so the user can see the history and mark items read.
+model Notification {
+  id             BigInt    @id @default(autoincrement())
+  alertId        String
+  userEmail      String
+  title          String
+  body           String
+  marketQuestion String
+  externalUrl    String?
+  triggeredAt    DateTime  @default(now())
+  readAt         DateTime?
+
+  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  @@index([userEmail, readAt])
+  @@index([alertId])
+  @@index([triggeredAt])
 }

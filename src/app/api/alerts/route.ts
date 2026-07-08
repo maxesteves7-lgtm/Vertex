@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       marketQuestion?: string;
       ruleType?: string;
       threshold?: number;
+      channel?: string;
     };
     if (
       !body.exchange ||
@@ -51,12 +52,17 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+    const channel =
+      body.channel === "EMAIL" || body.channel === "IN_APP"
+        ? body.channel
+        : "IN_APP";
     const alert = await createAlert({
       exchange: body.exchange,
       externalMarketId: body.externalMarketId,
       marketQuestion: body.marketQuestion,
       ruleType: body.ruleType,
       threshold: body.threshold,
+      channel,
     });
     return NextResponse.json({ alert });
   } catch (e) {

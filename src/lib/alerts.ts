@@ -27,11 +27,17 @@ export type CreateAlertInput = {
   marketQuestion: string;
   ruleType: "PRICE_ABOVE" | "PRICE_BELOW";
   threshold: number; // 0..1
+  /** "IN_APP" = show in the bell/notifications drawer.
+   *  "EMAIL"  = send email via Resend. Default: IN_APP. */
+  channel?: "IN_APP" | "EMAIL";
   destination?: string; // optional override; defaults to ALERT_EMAIL_TO
 };
 
 export async function createAlert(input: CreateAlertInput) {
   const user = await getOrCreateDefaultUser();
+  const channel = input.channel ?? "IN_APP";
+  // For IN_APP, destination stores the user email so the notifications
+  // route can query by it later. Keeps the schema single-user-friendly.
   const destination = input.destination ?? user.email;
   return prisma.alert.create({
     data: {
@@ -41,7 +47,7 @@ export async function createAlert(input: CreateAlertInput) {
       marketQuestion: input.marketQuestion,
       ruleType: input.ruleType,
       threshold: input.threshold,
-      channel: "EMAIL",
+      channel,
       destination,
     },
   });
@@ -104,7 +110,7 @@ export async function evaluateAlerts(): Promise<{
         continue;
       }
 
-      await fireAlertEmail(a, m.yesPrice, m.externalUrl);
+      await fireAlert(a, m.yesPrice, m.externalUrl);
       await prisma.alert.update({
         where: { id: a.id },
         data: { lastFiredAt: new Date() },
@@ -119,7 +125,8 @@ export async function evaluateAlerts(): Promise<{
   return { evaluated: alerts.length, fired, skipped, errors };
 }
 
-async function fireAlertEmail(
+/** Dispatch a triggered alert on whichever channel was configured. */
+async function fireAlert(
   a: PrismaAlert,
   currentPrice: number,
   marketUrl: string,
@@ -128,6 +135,24 @@ async function fireAlertEmail(
     a.ruleType === "PRICE_ABOVE"
       ? `YES price ≥ ${(a.threshold * 100).toFixed(1)}%`
       : `YES price ≤ ${(a.threshold * 100).toFixed(1)}%`;
+  const currentPct = (currentPrice * 100).toFixed(1);
+
+  if (a.channel === "IN_APP") {
+    // In-app: write a Notification row that the bell will surface.
+    await prisma.notification.create({
+      data: {
+        alertId: a.id,
+        userEmail: a.destination,
+        title: `${a.marketQuestion.slice(0, 60)}${a.marketQuestion.length > 60 ? "…" : ""} · ${currentPct}%`,
+        body: `${ruleHuman} — currently ${currentPct}%`,
+        marketQuestion: a.marketQuestion,
+        externalUrl: marketUrl,
+      },
+    });
+    return;
+  }
+
+  // EMAIL fallback — matches the pre-existing behavior.
   await sendEmail({
     to: a.destination,
     subject: `[Futurist] ${a.marketQuestion.slice(0, 80)}`,

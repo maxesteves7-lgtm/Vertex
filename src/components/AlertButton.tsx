@@ -29,6 +29,7 @@ export function AlertButton({
   const [thresholdPct, setThresholdPct] = useState<number>(
     Math.round((seed + 0.05) * 100),
   );
+  const [channel, setChannel] = useState<"IN_APP" | "EMAIL">("IN_APP");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
@@ -47,6 +48,7 @@ export function AlertButton({
           marketQuestion,
           ruleType: direction,
           threshold: thresholdPct / 100,
+          channel,
         }),
       });
       if (!res.ok) {
@@ -126,9 +128,35 @@ export function AlertButton({
           {error}
         </div>
       )}
-      <div className="mt-2 text-[10px] text-[var(--fg-dim)]">
-        Email goes to {process.env.NEXT_PUBLIC_ALERT_EMAIL_TO ?? "your address"}.
-        Cron checks every 5 min.
+      <div className="mt-2 flex items-center gap-1.5">
+        <span className="text-[10px] text-[var(--fg-dim)] tracking-wider uppercase">
+          Notify via
+        </span>
+        <button
+          onClick={() => setChannel("IN_APP")}
+          className={`px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-sm border ${
+            channel === "IN_APP"
+              ? "bg-[var(--accent-primary)] text-black border-[var(--accent-primary)]"
+              : "border-[var(--border)] text-[var(--fg-dim)] hover:text-[var(--fg)]"
+          }`}
+        >
+          🔔 In-app
+        </button>
+        <button
+          onClick={() => setChannel("EMAIL")}
+          className={`px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-sm border ${
+            channel === "EMAIL"
+              ? "bg-[var(--accent-primary)] text-black border-[var(--accent-primary)]"
+              : "border-[var(--border)] text-[var(--fg-dim)] hover:text-[var(--fg)]"
+          }`}
+        >
+          ✉ Email
+        </button>
+      </div>
+      <div className="mt-1 text-[10px] text-[var(--fg-dim)]">
+        {channel === "IN_APP"
+          ? "You'll see it in the bell at the top-right when the cron next fires."
+          : `Email goes to ${process.env.NEXT_PUBLIC_ALERT_EMAIL_TO ?? "your address"}.`}
       </div>
     </div>
   );
