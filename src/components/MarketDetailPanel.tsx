@@ -12,6 +12,7 @@ import { AlertButton } from "./AlertButton";
 import { OrderBook } from "./OrderBook";
 import { CorrelatedMarkets, type Candidate } from "./CorrelatedMarkets";
 import { AiOverview } from "./AiOverview";
+import { AiBrief } from "./AiBrief";
 
 type Props = {
   row: ScreenerRow;
@@ -151,7 +152,12 @@ export function MarketDetailPanel({
             <PriceChart tokenId={row.polymarketYesTokenId} />
           </Section>
 
-          {/* News Wire — live Google News headlines about this event */}
+          {/* AI Overview — Gemini synthesis grounded on Google News */}
+          <Section title="AI Overview">
+            <AiBrief row={row} />
+          </Section>
+
+          {/* News Wire — raw Google News headlines about this event */}
           <Section title="News Wire">
             <AiOverview row={row} />
           </Section>
@@ -179,57 +185,6 @@ export function MarketDetailPanel({
               <div className="text-[var(--fg-dim)] text-xs">
                 No Polymarket quote — alerts unavailable.
               </div>
-            )}
-          </Section>
-
-          {/* Related news */}
-          <Section title={`News affecting this market (${news.length})`}>
-            {news.length === 0 ? (
-              <div className="text-[var(--fg-dim)] text-xs py-2">
-                No news items currently linked. Real news provider connects when
-                you add a NEWS_API_KEY.
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {news.map((n) => (
-                  <li
-                    key={n.id}
-                    className="border border-[var(--border)] p-2 bg-black/40 hover:bg-black/70 transition-colors"
-                  >
-                    <div className="flex items-baseline justify-between gap-2 text-[10px] uppercase tracking-wider text-[var(--fg-dim)]">
-                      <span className="text-[var(--accent-primary)]">
-                        {n.source}
-                      </span>
-                      <span>{fmtSmartTime(n.timestamp)}</span>
-                    </div>
-                    <a
-                      href={n.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-xs mt-1 text-[var(--fg)] hover:text-[var(--accent-primary)]"
-                    >
-                      {n.headline}
-                    </a>
-                    {n.priceImpact !== undefined && (
-                      <div className="mt-1.5 text-[10px] uppercase tracking-wider">
-                        <span className="text-[var(--fg-dim)]">
-                          Est. price impact:{" "}
-                        </span>
-                        <span
-                          className={
-                            n.priceImpact >= 0
-                              ? "text-[var(--accent-up)] font-semibold"
-                              : "text-[var(--accent-down)] font-semibold"
-                          }
-                        >
-                          {n.priceImpact >= 0 ? "+" : ""}
-                          {(n.priceImpact * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
             )}
           </Section>
 

@@ -12,6 +12,7 @@ import { getSource } from "./EventCard";
 import { OrderBook } from "./OrderBook";
 import { CorrelatedMarkets, type Candidate } from "./CorrelatedMarkets";
 import { AiOverview } from "./AiOverview";
+import { AiBrief } from "./AiBrief";
 
 /**
  * Always-visible inline detail pane for the desktop cockpit. When no market
@@ -152,7 +153,12 @@ export function DetailPane({
         <PriceChart tokenId={row.polymarketYesTokenId} />
       </Section>
 
-      {/* News Wire — live Google News headlines about this event */}
+      {/* AI Overview — Gemini synthesis grounded on Google News */}
+      <Section title="AI Overview">
+        <AiBrief row={row} />
+      </Section>
+
+      {/* News Wire — raw Google News headlines about this event */}
       <Section title="News Wire">
         <AiOverview row={row} />
       </Section>
@@ -180,39 +186,6 @@ export function DetailPane({
           <div className="text-[var(--fg-mute)] text-xs">
             No Polymarket quote — alerts unavailable.
           </div>
-        )}
-      </Section>
-
-      {/* News */}
-      <Section title={`News (${news.length})`}>
-        {news.length === 0 ? (
-          <div className="text-[var(--fg-mute)] text-xs py-2">
-            No news items currently linked.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {news.slice(0, 6).map((n) => (
-              <li
-                key={n.id}
-                className="border border-[var(--border-soft)] p-2 bg-[var(--bg)]/40 hover:bg-[var(--bg-row)] transition-colors"
-              >
-                <div className="flex items-baseline justify-between gap-2 text-[10px] uppercase tracking-wider text-[var(--fg-mute)] font-mono">
-                  <span className="text-[var(--accent-primary)]">
-                    {n.source}
-                  </span>
-                  <span>{fmtSmartTime(n.timestamp)}</span>
-                </div>
-                <a
-                  href={n.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-xs mt-1 text-[var(--fg)] hover:text-[var(--accent-primary)]"
-                >
-                  {n.headline}
-                </a>
-              </li>
-            ))}
-          </ul>
         )}
       </Section>
 
