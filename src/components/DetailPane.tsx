@@ -11,6 +11,7 @@ import { AlertButton } from "./AlertButton";
 import { getSource } from "./EventCard";
 import { OrderBook } from "./OrderBook";
 import { CorrelatedMarkets, type Candidate } from "./CorrelatedMarkets";
+import { AiOverview } from "./AiOverview";
 
 /**
  * Always-visible inline detail pane for the desktop cockpit. When no market
@@ -149,6 +150,11 @@ export function DetailPane({
       {/* Price History */}
       <Section title="Price History (Polymarket YES)">
         <PriceChart tokenId={row.polymarketYesTokenId} />
+      </Section>
+
+      {/* News Wire — live Google News headlines about this event */}
+      <Section title="News Wire">
+        <AiOverview row={row} />
       </Section>
 
       {/* Correlated Markets */}

@@ -11,6 +11,7 @@ import { PriceChart } from "./PriceChart";
 import { AlertButton } from "./AlertButton";
 import { OrderBook } from "./OrderBook";
 import { CorrelatedMarkets, type Candidate } from "./CorrelatedMarkets";
+import { AiOverview } from "./AiOverview";
 
 type Props = {
   row: ScreenerRow;
@@ -148,6 +149,11 @@ export function MarketDetailPanel({
           {/* Real chart */}
           <Section title="Price History">
             <PriceChart tokenId={row.polymarketYesTokenId} />
+          </Section>
+
+          {/* News Wire — live Google News headlines about this event */}
+          <Section title="News Wire">
+            <AiOverview row={row} />
           </Section>
 
           {/* Correlated Markets */}
