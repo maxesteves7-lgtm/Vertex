@@ -71,8 +71,12 @@ export async function POST(req: Request) {
 
   // 2. Call Gemini
   const prompt = buildBriefPrompt(body, headlines);
+  // Google has been quietly moving newer models (2.0-flash, 2.5-flash) out
+  // of the free tier per-project. gemini-1.5-flash has the longest-standing
+  // free-tier availability and is plenty capable for a market brief.
+  const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
   const url = new URL(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
   );
   url.searchParams.set("key", apiKey);
 

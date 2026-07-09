@@ -152,7 +152,7 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
         <div className="flex items-center gap-2">
           <span
             className="px-1.5 py-0.5 rounded-sm font-mono text-[10px] tracking-[0.14em] bg-[rgba(255,102,0,0.12)] text-[var(--accent-primary)] border border-[rgba(255,102,0,0.3)]"
-            title="Synthesized by Google Gemini 2.0 Flash — free tier, grounded on Google News headlines"
+            title="Synthesized by Google Gemini — free tier, grounded on Google News headlines"
           >
             ⚡ AI
           </span>
