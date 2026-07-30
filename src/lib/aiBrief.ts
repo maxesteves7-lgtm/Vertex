@@ -71,9 +71,9 @@ export function buildBriefPrompt(
 
   const headlineBlock =
     headlines.length === 0
-      ? "(No recent headlines available. Base your response only on well-established public facts and clearly say so.)"
+      ? "(No recent headlines pulled — lean on your own knowledge of the entities and context involved.)"
       : headlines
-          .slice(0, 10)
+          .slice(0, 15)
           .map(
             (h, i) =>
               `${i + 1}. [${h.source}, ${new Date(h.publishedAt).toLocaleDateString(
@@ -83,35 +83,40 @@ export function buildBriefPrompt(
           )
           .join("\n");
 
-  return `You are an analyst briefing a hedge fund trader on a prediction market event. The trader has 30 seconds. No fluff. Every sentence must be actionable.
+  return `You are a senior analyst writing a briefing for a hedge fund trader who is about to size a position on a prediction market. Your job is to deliver actionable intelligence, not a summary of the market question. The trader already knows what the market is asking — they need context, analysis, and a view.
 
 EVENT
   Question: ${input.question}
-  Source: ${input.source} (${input.category})
-  Current YES: ${yes} | NO: ${no}
-  24h change: ${delta} | Vol: ${vol} | Closes: ${closes}
+  Platform: ${input.source} (${input.category})
+  Current pricing: YES ${yes} | NO ${no}
+  24h price change: ${delta} | 24h volume: ${vol}
+  Resolves: ${closes}
 
-RECENT HEADLINES (from Google News)
+RECENT HEADLINES (via Google News search)
 ${headlineBlock}
 
-CATEGORY GUIDANCE
+CATEGORY-SPECIFIC ANGLE
 ${lead}
 
-Write the overview using this exact structure. Use markdown-style **bold** section headers and bullet points. No preamble, no restating the question:
+Write a briefing with the following exact structure. Use markdown-style **bold** section headers and bullet points. No preamble, no restating the question:
 
 **Recent catalysts**
-- 2 to 3 bullets on what has moved this market recently. Reference specific headlines above by source or dated fact — do not fabricate.
+- 2–3 bullets on the developments most directly moving this market. Blend the headlines above with your own knowledge of the entities and context. Cite specific names, dates, and numbers.
 
 **Upcoming to watch**
-- 2 to 3 bullets on the next hard catalysts before resolution (dates, events, releases).
+- 2–3 bullets on hard catalysts between now and resolution: specific dates, releases, games, elections, hearings, decisions. Be as specific as possible.
 
 **Pricing reality check**
-- 2 bullets comparing YES ${yes} to what the headlines and context suggest. Is it rich, cheap, or fair?
+- 2 bullets comparing YES ${yes} to your assessment of the true probability. Argue whether the market is rich, cheap, or fair — and by roughly how much. Reference base rates, historical patterns, or comparable events.
 
 **Biggest risk**
-- 1 bullet on the single event most likely to cause a sharp move, and which side it would move.
+- 1 bullet naming the single most likely event that would cause a sharp move, and which side (YES or NO) it would push.
 
-If the headlines are insufficient for any section, write "Insufficient signal — verify manually." rather than inventing details. Be direct. Name specific people, dates, and numbers where the headlines support them.`;
+Rules:
+- Blend the fresh headlines with your own knowledge of the topic. Do not refuse to write a section just because headlines are sparse — use what you know, and if you're inferring rather than citing news, say so briefly ("based on general knowledge of X, ...").
+- Be direct and specific. No generic hedges. Every bullet should tell the trader something they couldn't see just by looking at the price.
+- Never invent citations. Cite headlines only when you're actually using them.
+- Never restate the market question. Get straight to the analysis.`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -51,23 +51,14 @@ export async function POST(req: Request) {
     );
   }
 
-  // 1. Fetch news headlines for grounding — best-effort. Next.js cache
-  //    dedupes with /api/ai/overview so this is often instant.
+  // 1. Fetch news for grounding — two queries per market to get more signal:
+  //    the full question and a keyword-only variant that catches broader
+  //    context. Best-effort; if news fails, Gemini falls back to knowledge.
   const query = normalizeQuery(body.question);
-  let headlines: WireItem[] = [];
-  try {
-    const res = await fetch(buildRssUrl(query), {
-      next: { revalidate: 600 },
-      headers: {
-        accept: "application/rss+xml, application/xml, text/xml, */*",
-        "user-agent":
-          "Mozilla/5.0 (compatible; FuturistTerminal/0.5; +https://predix-ochre.vercel.app)",
-      },
-    });
-    if (res.ok) headlines = parseRssItems(await res.text(), 10);
-  } catch {
-    /* news failure is non-fatal — Gemini can still write from context */
-  }
+  const keywordsQuery = extractKeywords(body.question);
+  const headlines = await fetchHeadlinesForQueries(
+    keywordsQuery && keywordsQuery !== query ? [query, keywordsQuery] : [query],
+  );
 
   // 2. Call Gemini
   const prompt = buildBriefPrompt(body, headlines);
@@ -91,7 +82,7 @@ export async function POST(req: Request) {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 1200,
+          maxOutputTokens: 2000,
         },
         // Loosen the default safety a bit — market briefs about politics or
         // war-adjacent events get blocked by the default thresholds.
@@ -126,7 +117,24 @@ export async function POST(req: Request) {
     );
   }
 
-  const json = (await res.json()) as GeminiResponse;
+  // Read as text first so a non-JSON error page (Google occasionally serves
+  // HTML on rate limits / regional blocks) surfaces as a real message
+  // instead of crashing with "unexpected token 'A'".
+  const rawText = await res.text();
+  let json: GeminiResponse = {};
+  try {
+    json = JSON.parse(rawText) as GeminiResponse;
+  } catch {
+    return NextResponse.json(
+      {
+        configured: true,
+        content: "",
+        error: `Gemini returned non-JSON (${res.status}): ${rawText.slice(0, 200)}`,
+      },
+      { status: 502 },
+    );
+  }
+
   if (!res.ok) {
     return NextResponse.json(
       {
@@ -167,4 +175,92 @@ function normalizeQuery(q: string): string {
     .replace(/\?+\s*$/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Extract 3–6 high-signal search keywords from a market question — proper
+ * nouns, numbers, and years. Used as a second RSS query alongside the full
+ * normalized question so we get broader context on niche markets.
+ */
+function extractKeywords(question: string): string {
+  const stop = new Set([
+    "the",
+    "and",
+    "for",
+    "with",
+    "will",
+    "that",
+    "this",
+    "from",
+    "have",
+    "has",
+    "had",
+    "are",
+    "is",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "or",
+    "in",
+    "on",
+    "at",
+    "to",
+    "of",
+    "a",
+    "an",
+    "by",
+    "as",
+    "vs",
+    "team",
+  ]);
+  const tokens = question.replace(/[?.,!]/g, "").split(/\s+/);
+  const kept = tokens.filter((t) => {
+    const lower = t.toLowerCase();
+    if (stop.has(lower)) return false;
+    if (t.length < 2) return false;
+    // keep numbers, or words that start with a capital, or 4+-char lowercase
+    if (/^\d/.test(t)) return true;
+    if (/^[A-Z]/.test(t)) return true;
+    return t.length >= 5;
+  });
+  return kept.slice(0, 6).join(" ").trim();
+}
+
+/**
+ * Fetch multiple Google News RSS queries in parallel and merge results,
+ * deduping by URL. Order preserves the first query's ranking.
+ */
+async function fetchHeadlinesForQueries(
+  queries: string[],
+): Promise<WireItem[]> {
+  const seen = new Set<string>();
+  const out: WireItem[] = [];
+  const results = await Promise.all(
+    queries.map(async (q) => {
+      try {
+        const res = await fetch(buildRssUrl(q), {
+          next: { revalidate: 600 },
+          headers: {
+            accept: "application/rss+xml, application/xml, text/xml, */*",
+            "user-agent":
+              "Mozilla/5.0 (compatible; FuturistTerminal/0.5; +https://predix-ochre.vercel.app)",
+          },
+        });
+        if (!res.ok) return [] as WireItem[];
+        return parseRssItems(await res.text(), 10);
+      } catch {
+        return [] as WireItem[];
+      }
+    }),
+  );
+  for (const list of results) {
+    for (const item of list) {
+      if (seen.has(item.url)) continue;
+      seen.add(item.url);
+      out.push(item);
+    }
+  }
+  return out.slice(0, 15);
 }
