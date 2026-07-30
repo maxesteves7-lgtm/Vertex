@@ -71,11 +71,12 @@ export async function POST(req: Request) {
 
   // 2. Call Gemini
   const prompt = buildBriefPrompt(body, headlines);
-  // Google's model catalogue shifts fast — 1.5-flash is now deprecated from
-  // the v1beta API, and 2.0-flash was moved off the free tier per-project.
-  // `gemini-2.5-flash` is the current default. Override via env var
-  // (GEMINI_MODEL) if Google reshuffles again.
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  // Google keeps deprecating pinned model names — 1.5-flash gone from
+  // v1beta, 2.5-flash "no longer available to new users", 2.0-flash off the
+  // free tier. `gemini-flash-latest` is their evergreen alias that always
+  // points to the current available flash model. Override via env var
+  // (GEMINI_MODEL) to pin a specific version.
+  const model = process.env.GEMINI_MODEL ?? "gemini-flash-latest";
   const url = new URL(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
   );
