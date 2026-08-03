@@ -5,6 +5,8 @@ import "./globals.css";
 import { TopNav } from "@/components/TopNav";
 import { CommandBar } from "@/components/CommandBar";
 import { MacroTicker } from "@/components/MacroTicker";
+import { Footer } from "@/components/Footer";
+import { CookieBanner } from "@/components/CookieBanner";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -53,6 +55,8 @@ export default function RootLayout({
         </Suspense>
         <MacroTicker />
         {children}
+        <Footer />
+        <CookieBanner />
         <CommandBar />
       </body>
     </html>

@@ -23,6 +23,13 @@ import { BottomStrip } from "./BottomStrip";
 import { ScreenerBuilder } from "./ScreenerBuilder";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { OnboardingTour } from "./OnboardingTour";
+import { FilterDrawer } from "./FilterDrawer";
+import {
+  applyFilters,
+  countActive,
+  emptyFilters,
+  type FiltersState,
+} from "@/lib/filters";
 import { hasSeenTour } from "@/lib/onboarding";
 import { exportRowsToCsv } from "@/lib/csv";
 import {
@@ -43,6 +50,7 @@ const SEARCH_DEBOUNCE_MS = 250;
 const FAV_KEY = "vertex.favorites.v1";
 const SIDEBAR_KEY = "vertex.sidebar.v2";
 const VIEW_MODE_KEY = "vertex.viewMode.v1";
+const FILTERS_KEY = "vertex.filters.v1";
 
 export function HomeView({
   rows,
@@ -85,6 +93,8 @@ export function HomeView({
     rowId: string;
   } | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [filters, setFilters] = useState<FiltersState>(emptyFilters);
 
   // First-run: auto-open the terminal primer if the user hasn't dismissed it
   useEffect(() => {
@@ -113,10 +123,25 @@ export function HomeView({
       const v = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null;
       if (v === "scanner" || v === "cards") setViewMode(v);
       setScreeners(loadScreeners());
+      const f = localStorage.getItem(FILTERS_KEY);
+      if (f) {
+        try {
+          setFilters(JSON.parse(f) as FiltersState);
+        } catch {
+          /* ignore corrupt cache */
+        }
+      }
     } catch {
       /* ignore */
     }
   }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+    } catch {
+      /* ignore */
+    }
+  }, [filters]);
   useEffect(() => {
     try {
       localStorage.setItem(VIEW_MODE_KEY, viewMode);
@@ -166,7 +191,7 @@ export function HomeView({
   }, [rows]);
 
   // Apply category + view + source chip + search + sort
-  const filtered = useMemo(() => {
+  const filteredBase = useMemo(() => {
     const q = debouncedQ.trim().toLowerCase();
     let out = rowsWithSource;
 
@@ -289,6 +314,19 @@ export function HomeView({
     favorites,
     screeners,
   ]);
+
+  // Advanced-filter pass — applied AFTER the sidebar/chips narrowing so
+  // filters compose with (rather than replace) the top-level controls.
+  const filtered = useMemo(() => {
+    if (countActive(filters) === 0) return filteredBase;
+    const passing = new Set(
+      applyFilters(
+        filteredBase.map((x) => x.row),
+        filters,
+      ).map((r) => r.id),
+    );
+    return filteredBase.filter((x) => passing.has(x.row.id));
+  }, [filteredBase, filters]);
 
   const totalVol = useMemo(
     () => filtered.reduce((a, x) => a + (x.row.volume24h ?? 0), 0),
@@ -536,6 +574,21 @@ export function HomeView({
               </button>
             )}
             <button
+              onClick={() => setFilterDrawerOpen(true)}
+              className="font-mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] hover:text-[var(--accent-primary)] border border-[var(--border)] rounded-sm px-2.5 py-1 relative"
+              title="Advanced filters"
+            >
+              ⛭ FILTERS
+              {countActive(filters) > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-1 rounded-full bg-[var(--accent-primary)] text-black font-mono font-semibold text-[9px] flex items-center justify-center tabular-nums"
+                  aria-label={`${countActive(filters)} filters active`}
+                >
+                  {countActive(filters)}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setTourOpen(true)}
               className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-mute)] hover:text-[var(--accent-primary)] border border-[var(--border)] rounded-sm px-2.5 py-1"
               title="Take the terminal tour"
@@ -587,9 +640,45 @@ export function HomeView({
           </Chip>
         </div>
 
+        {/* Active-filter chip strip — visible only when filters are active */}
+        {countActive(filters) > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-4 -mt-2">
+            <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)]">
+              FILTERS ·
+            </span>
+            {describeActive(filters).map((chip) => (
+              <button
+                key={chip.key}
+                onClick={() => setFilters(chip.clear(filters))}
+                className="group inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-[var(--border)] bg-[var(--bg-elev)] font-mono text-[10px] tracking-[0.08em] text-[var(--fg)] hover:border-[var(--accent-down)] hover:text-[var(--accent-down)]"
+                title="Click to remove this filter"
+              >
+                <span>{chip.label}</span>
+                <span className="text-[var(--fg-mute)] group-hover:text-[var(--accent-down)]">
+                  ×
+                </span>
+              </button>
+            ))}
+            <button
+              onClick={() => setFilters(emptyFilters)}
+              className="ml-2 px-2 py-0.5 rounded-sm font-mono text-[10px] tracking-[0.14em] text-[var(--accent-down)] hover:text-[var(--fg)] hover:bg-[var(--accent-down)]"
+            >
+              CLEAR ALL
+            </button>
+            <span className="ml-auto font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)] tabular-nums">
+              SHOWING {filtered.length.toLocaleString()} OF{" "}
+              {filteredBase.length.toLocaleString()}
+            </span>
+          </div>
+        )}
+
         {/* Body — Scanner table or Card grid */}
         {filtered.length === 0 ? (
-          <EmptyState selection={selection} />
+          <EmptyStateWithFilters
+            selection={selection}
+            hasFilters={countActive(filters) > 0}
+            onClearFilters={() => setFilters(emptyFilters)}
+          />
         ) : viewMode === "scanner" ? (
           <Scanner
             rows={filtered.map((x) => x.row)}
@@ -755,6 +844,15 @@ export function HomeView({
 
       {tourOpen && <OnboardingTour onClose={() => setTourOpen(false)} />}
 
+      <FilterDrawer
+        open={filterDrawerOpen}
+        onClose={() => setFilterDrawerOpen(false)}
+        filters={filters}
+        onChange={setFilters}
+        onApplyPreset={(f) => setFilters(f)}
+        onClearAll={() => setFilters(emptyFilters)}
+      />
+
       {contextMenu && (() => {
         const target = rows.find((r) => r.id === contextMenu.rowId);
         if (!target) return null;
@@ -861,6 +959,139 @@ function Chip({
       {children}
     </button>
   );
+}
+
+/**
+ * Wraps EmptyState with a filter-aware CTA when advanced filters are active.
+ * If filters aren't the cause, falls through to the normal empty message.
+ */
+function EmptyStateWithFilters({
+  selection,
+  hasFilters,
+  onClearFilters,
+}: {
+  selection: SidebarSelection;
+  hasFilters: boolean;
+  onClearFilters: () => void;
+}) {
+  if (hasFilters) {
+    return (
+      <div className="text-center text-[var(--fg-dim)] py-16 border border-dashed border-[var(--border)] rounded-xl">
+        <div className="text-sm text-[var(--fg)]">
+          No markets match your current filters.
+        </div>
+        <div className="text-[12px] mt-1">
+          Try relaxing the criteria — or clear all filters to start over.
+        </div>
+        <button
+          onClick={onClearFilters}
+          className="mt-4 px-4 py-2 font-mono text-[11px] tracking-[0.14em] bg-[var(--accent-primary)] text-black rounded-sm hover:opacity-90"
+        >
+          CLEAR FILTERS
+        </button>
+      </div>
+    );
+  }
+  return <EmptyState selection={selection} />;
+}
+
+/**
+ * Turn a FiltersState into a list of dismissible chip descriptors. Each
+ * chip carries a label plus a `clear()` fn that returns a new state with
+ * that specific field removed.
+ */
+function describeActive(
+  filters: FiltersState,
+): Array<{
+  key: string;
+  label: string;
+  clear: (f: FiltersState) => FiltersState;
+}> {
+  const chips: Array<{
+    key: string;
+    label: string;
+    clear: (f: FiltersState) => FiltersState;
+  }> = [];
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const usd = (n: number) =>
+    n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
+
+  if (filters.yesMin !== undefined || filters.yesMax !== undefined) {
+    const lo = filters.yesMin !== undefined ? pct(filters.yesMin) : "0%";
+    const hi = filters.yesMax !== undefined ? pct(filters.yesMax) : "100%";
+    chips.push({
+      key: "yes",
+      label: `YES ${lo}–${hi}`,
+      clear: (f) => ({ ...f, yesMin: undefined, yesMax: undefined }),
+    });
+  }
+  if (filters.priceChangeAbs !== undefined) {
+    const dir =
+      filters.priceChangeDir === "up"
+        ? " ▲"
+        : filters.priceChangeDir === "down"
+          ? " ▼"
+          : "";
+    chips.push({
+      key: "change",
+      label: `Δ24h ≥ ${Math.round(filters.priceChangeAbs * 100)}pp${dir}`,
+      clear: (f) => ({
+        ...f,
+        priceChangeAbs: undefined,
+        priceChangeDir: undefined,
+      }),
+    });
+  }
+  if (filters.minVolume24h !== undefined && filters.minVolume24h > 0) {
+    chips.push({
+      key: "vol",
+      label: `Vol ≥ ${usd(filters.minVolume24h)}`,
+      clear: (f) => ({ ...f, minVolume24h: undefined }),
+    });
+  }
+  if (filters.closingWithinDays !== undefined) {
+    chips.push({
+      key: "close",
+      label: `Closes ≤ ${filters.closingWithinDays}d`,
+      clear: (f) => ({ ...f, closingWithinDays: undefined }),
+    });
+  }
+  if (filters.excludeClosingWithin24h) {
+    chips.push({
+      key: "not24h",
+      label: `Skip <24h`,
+      clear: (f) => ({ ...f, excludeClosingWithin24h: false }),
+    });
+  }
+  if (filters.sources && filters.sources.length > 0) {
+    chips.push({
+      key: "src",
+      label: `Src: ${filters.sources.join(",")}`,
+      clear: (f) => ({ ...f, sources: undefined }),
+    });
+  }
+  if (filters.categories && filters.categories.length > 0) {
+    chips.push({
+      key: "cats",
+      label: `Cat: ${filters.categories.join(",")}`,
+      clear: (f) => ({ ...f, categories: undefined }),
+    });
+  }
+  if (filters.excludeCategories && filters.excludeCategories.length > 0) {
+    chips.push({
+      key: "exclcats",
+      label: `Not: ${filters.excludeCategories.join(",")}`,
+      clear: (f) => ({ ...f, excludeCategories: undefined }),
+    });
+  }
+  if (filters.structure && filters.structure !== "any") {
+    chips.push({
+      key: "struct",
+      label: filters.structure === "binary" ? "Binary" : "Multi-outcome",
+      clear: (f) => ({ ...f, structure: undefined }),
+    });
+  }
+  return chips;
 }
 
 function EmptyState({ selection }: { selection: SidebarSelection }) {
