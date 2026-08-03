@@ -123,10 +123,10 @@ export function HomeView({
       const v = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null;
       if (v === "scanner" || v === "cards") setViewMode(v);
       setScreeners(loadScreeners());
-      const f = localStorage.getItem(FILTERS_KEY);
-      if (f) {
+      const savedFilters = localStorage.getItem(FILTERS_KEY);
+      if (savedFilters) {
         try {
-          setFilters(JSON.parse(f) as FiltersState);
+          setFilters(JSON.parse(savedFilters) as FiltersState);
         } catch {
           /* ignore corrupt cache */
         }
