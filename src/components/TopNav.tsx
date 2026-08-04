@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { AuthMenu } from "./AuthMenu";
 
 /**
  * Terminal-style top nav. Mono Futurist wordmark with the orange terminal
@@ -111,13 +112,8 @@ export function TopNav() {
       {/* Notifications */}
       <NotificationBell />
 
-      {/* User */}
-      <button
-        aria-label="Account"
-        className="w-7 h-7 rounded-sm bg-[var(--bg-elev)] border border-[var(--border)] text-[var(--fg-dim)] hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)] font-mono text-[11px]"
-      >
-        M
-      </button>
+      {/* User + auth */}
+      <AuthMenu />
     </header>
   );
 }
