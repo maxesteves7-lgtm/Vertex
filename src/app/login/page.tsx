@@ -2,10 +2,23 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
 
+/**
+ * Page-level Suspense boundary — required by Next 16 because `useSearchParams`
+ * (used in LoginInner for the ?next= redirect) forces client-side bailout of
+ * static prerendering otherwise.
+ */
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthShell title="Sign in to Futurist">Loading…</AuthShell>}>
+      <LoginInner />
+    </Suspense>
+  );
+}
+
+function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") ?? "/account";
