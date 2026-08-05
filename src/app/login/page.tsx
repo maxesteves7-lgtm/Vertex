@@ -25,6 +25,7 @@ function LoginInner() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -43,7 +44,7 @@ function LoginInner() {
       router.push(next);
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign-in failed");
+      setError(explainFetchError(e));
     } finally {
       setBusy(false);
     }
@@ -63,7 +64,7 @@ function LoginInner() {
       if (error) throw error;
       // OAuth redirects out — no local nav needed
     } catch (e) {
-      setError(e instanceof Error ? e.message : "OAuth start failed");
+      setError(explainFetchError(e));
       setBusy(false);
     }
   }
@@ -95,13 +96,11 @@ function LoginInner() {
           />
         </Field>
         <Field label="PASSWORD">
-          <input
-            type="password"
-            required
-            minLength={8}
+          <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-2 text-[13px] outline-none"
+            onChange={setPassword}
+            show={showPass}
+            onToggle={() => setShowPass((v) => !v)}
           />
         </Field>
         {error && (
@@ -177,6 +176,65 @@ export function Field({
       {children}
     </div>
   );
+}
+
+/**
+ * Password input with a show/hide eye toggle. Shared across login, signup,
+ * reset-password. `show` state is lifted to the parent so a page can toggle
+ * multiple password fields together (e.g. signup's password + confirm).
+ */
+export function PasswordInput({
+  value,
+  onChange,
+  show,
+  onToggle,
+  autoComplete = "current-password",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  show: boolean;
+  onToggle: () => void;
+  autoComplete?: string;
+}) {
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        required
+        minLength={8}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm pl-3 pr-14 py-2 text-[13px] outline-none font-mono"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-sm font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)] hover:text-[var(--accent-primary)]"
+      >
+        {show ? "HIDE" : "SHOW"}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Turn opaque browser fetch errors into something actionable. "Failed to
+ * fetch" is what the browser reports when the request never left the tab —
+ * usually a bad Supabase URL, missing env vars, or CORS/Site URL misconfig.
+ */
+export function explainFetchError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/failed to fetch|network|typeerror/i.test(msg)) {
+    return (
+      "Failed to reach Supabase. Check that (a) NEXT_PUBLIC_SUPABASE_URL and " +
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY are set in Vercel, (b) the Supabase project " +
+      "isn't paused (free tier pauses after 7 days idle), and (c) Site URL in " +
+      "Supabase auth settings includes this domain."
+    );
+  }
+  return msg || "Request failed";
 }
 
 export function NotConfigured() {

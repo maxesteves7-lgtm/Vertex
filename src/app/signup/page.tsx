@@ -4,13 +4,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
-import { AuthShell, Field, NotConfigured } from "../login/page";
+import {
+  AuthShell,
+  Field,
+  NotConfigured,
+  PasswordInput,
+  explainFetchError,
+} from "../login/page";
 
 export default function SignupPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [ageOk, setAgeOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23,6 +31,10 @@ export default function SignupPage() {
     setError(null);
     if (!ageOk) {
       setError("You must confirm you are 18 or older.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords don't match.");
       return;
     }
     setBusy(true);
@@ -38,7 +50,7 @@ export default function SignupPage() {
       if (error) throw error;
       setSent(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign-up failed");
+      setError(explainFetchError(e));
     } finally {
       setBusy(false);
     }
@@ -57,7 +69,7 @@ export default function SignupPage() {
       });
       if (error) throw error;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "OAuth start failed");
+      setError(explainFetchError(e));
       setBusy(false);
     }
   }
@@ -108,13 +120,19 @@ export default function SignupPage() {
           />
         </Field>
         <Field label="PASSWORD (min 8 chars)">
-          <input
-            type="password"
-            required
-            minLength={8}
+          <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-2 text-[13px] outline-none"
+            onChange={setPassword}
+            show={showPass}
+            onToggle={() => setShowPass((v) => !v)}
+          />
+        </Field>
+        <Field label="CONFIRM PASSWORD">
+          <PasswordInput
+            value={confirm}
+            onChange={setConfirm}
+            show={showPass}
+            onToggle={() => setShowPass((v) => !v)}
           />
         </Field>
         <label className="flex items-start gap-2 text-[12px] text-[var(--fg-dim)] cursor-pointer leading-snug pt-1">
