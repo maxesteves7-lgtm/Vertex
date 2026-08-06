@@ -116,7 +116,7 @@ async function handleSubscriptionUpsert(sub: Stripe.Subscription) {
   );
 
   // Locate user email — prefer metadata, fall back to a customer lookup on Stripe
-  let userEmail = email;
+  let userEmail: string | null = email;
   if (!userEmail) {
     const customer = await stripe().customers.retrieve(customerId);
     if (!(customer as Stripe.DeletedCustomer).deleted) {
