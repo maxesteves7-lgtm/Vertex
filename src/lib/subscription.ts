@@ -6,12 +6,15 @@
 
 import { prisma } from "./prisma";
 import type { Tier } from "./stripe";
+import { ownerOf } from "./team";
 
 export type EffectiveSubscription = {
   tier: Tier;
   status: string;
   currentPeriodEnd: Date | null;
   cancelAtPeriodEnd: boolean;
+  /** Present when the tier is inherited from a team the caller is a member of. */
+  inheritedFrom?: string;
 };
 
 /** Feature names known to the app. Add new ones here as they get gated. */
@@ -36,8 +39,14 @@ export async function getSubscription(
 ): Promise<EffectiveSubscription> {
   if (!userEmail) return freeDefault();
   try {
+    // If the user is a member of a team (as owner or invitee), the tier
+    // comes from the team's OWNER subscription — not their own personal
+    // sub row (which for a pure member is typically 'free').
+    const teamOwner = await ownerOf(userEmail);
+    const lookupEmail = teamOwner ?? userEmail;
+
     const row = await prisma.subscription.findUnique({
-      where: { userEmail },
+      where: { userEmail: lookupEmail },
     });
     if (!row) return freeDefault();
 
@@ -57,6 +66,8 @@ export async function getSubscription(
       status: row.status,
       currentPeriodEnd: row.currentPeriodEnd,
       cancelAtPeriodEnd: row.cancelAtPeriodEnd,
+      inheritedFrom:
+        lookupEmail !== userEmail ? lookupEmail : undefined,
     };
   } catch {
     // DB unavailable → be conservative, deny paid features

@@ -291,6 +291,9 @@ export default function AccountPage() {
           </form>
         </Card>
 
+        {/* Team — visible to any Institutional user (owner OR member) */}
+        {sub?.tier === "institutional" && <TeamSection />}
+
         {/* API Keys — only visible to Institutional users */}
         {sub?.tier === "institutional" && <ApiKeysSection />}
 
@@ -375,6 +378,229 @@ function StatusLine({
     >
       {s.msg}
     </div>
+  );
+}
+
+type TeamResp = {
+  team: { id: string; ownerEmail: string; name: string } | null;
+  isOwner: boolean;
+  members: Array<{ id: string; userEmail: string; joinedAt: string }>;
+  invites: Array<{ id: string; email: string; expiresAt: string; createdAt: string }>;
+  seatsUsed: number;
+  seatsMax: number;
+};
+
+/**
+ * Team management. Owner sees invite/remove UI + pending invites. Member
+ * sees a read-only "You're on X's team" summary.
+ */
+function TeamSection() {
+  const [data, setData] = useState<TeamResp | null>(null);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copyLink, setCopyLink] = useState<string | null>(null);
+
+  async function refresh() {
+    try {
+      const r = await fetch("/api/team/members");
+      setData((await r.json()) as TeamResp);
+    } catch {
+      /* ignore */
+    }
+  }
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function invite(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setCopyLink(null);
+    try {
+      const res = await fetch("/api/team/invite", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const j = (await res.json()) as {
+        invite?: unknown;
+        acceptUrl?: string;
+        emailWarning?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setEmail("");
+      if (j.emailWarning && j.acceptUrl) {
+        setCopyLink(j.acceptUrl);
+        setError(j.emailWarning);
+      }
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Invite failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revokeInvite(id: string) {
+    if (!confirm("Revoke this pending invite?")) return;
+    await fetch(`/api/team/invite?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    refresh();
+  }
+
+  async function removeMember(memberEmail: string) {
+    if (!confirm(`Remove ${memberEmail} from the team?`)) return;
+    await fetch(`/api/team/member?email=${encodeURIComponent(memberEmail)}`, {
+      method: "DELETE",
+    });
+    refresh();
+  }
+
+  if (!data) {
+    return (
+      <Card title="Team">
+        <div className="text-[12px] text-[var(--fg-mute)] font-mono">
+          Loading team…
+        </div>
+      </Card>
+    );
+  }
+
+  if (!data.team) {
+    return null; // shouldn't happen (Institutional auto-creates), but safe
+  }
+
+  // MEMBER view — read-only
+  if (!data.isOwner) {
+    return (
+      <Card title="Team">
+        <p className="text-[13px] text-[var(--fg)] mb-2">
+          You&apos;re on{" "}
+          <strong className="font-mono">{data.team.ownerEmail}</strong>&apos;s
+          team.
+        </p>
+        <p className="text-[12px] text-[var(--fg-dim)] leading-relaxed">
+          Your Institutional access is provided by the team owner. If they
+          cancel or remove you, your tier will drop back to Free.
+        </p>
+      </Card>
+    );
+  }
+
+  // OWNER view — manage
+  const remaining = data.seatsMax - data.seatsUsed;
+  return (
+    <Card title="Team">
+      <div className="flex items-baseline justify-between mb-3">
+        <p className="text-[12px] text-[var(--fg-dim)]">
+          Invite up to {data.seatsMax - 1} teammates. Everyone gets full
+          Institutional access on your subscription.
+        </p>
+        <span className="font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)] tabular-nums">
+          {data.seatsUsed}/{data.seatsMax} SEATS
+        </span>
+      </div>
+
+      {/* Members list */}
+      <ul className="border border-[var(--border)] rounded-sm divide-y divide-[var(--border-soft)] mb-3">
+        {data.members.map((m) => {
+          const isOwner =
+            m.userEmail.toLowerCase() === data.team!.ownerEmail.toLowerCase();
+          return (
+            <li
+              key={m.id}
+              className="flex items-center gap-3 px-3 py-2"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] text-[var(--fg)] truncate">
+                  {m.userEmail}
+                  {isOwner && (
+                    <span className="ml-2 font-mono text-[10px] text-[var(--accent-primary)]">
+                      OWNER
+                    </span>
+                  )}
+                </div>
+                <div className="font-mono text-[10px] text-[var(--fg-mute)]">
+                  Joined {new Date(m.joinedAt).toLocaleDateString()}
+                </div>
+              </div>
+              {!isOwner && (
+                <button
+                  onClick={() => removeMember(m.userEmail)}
+                  className="px-2 py-1 font-mono text-[10px] tracking-[0.14em] border border-[var(--accent-down)] text-[var(--accent-down)] rounded-sm hover:bg-[var(--accent-down)] hover:text-[var(--fg)]"
+                >
+                  REMOVE
+                </button>
+              )}
+            </li>
+          );
+        })}
+        {data.invites.map((i) => (
+          <li
+            key={i.id}
+            className="flex items-center gap-3 px-3 py-2 bg-[var(--bg-row)]/40"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] text-[var(--fg)] truncate">
+                {i.email}{" "}
+                <span className="ml-2 font-mono text-[10px] text-[var(--accent-amber)]">
+                  PENDING
+                </span>
+              </div>
+              <div className="font-mono text-[10px] text-[var(--fg-mute)]">
+                Invited {new Date(i.createdAt).toLocaleDateString()} · expires{" "}
+                {new Date(i.expiresAt).toLocaleDateString()}
+              </div>
+            </div>
+            <button
+              onClick={() => revokeInvite(i.id)}
+              className="px-2 py-1 font-mono text-[10px] tracking-[0.14em] border border-[var(--border)] text-[var(--fg-dim)] hover:text-[var(--fg)]"
+            >
+              REVOKE
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {/* Invite form */}
+      {remaining > 0 ? (
+        <form onSubmit={invite} className="flex items-center gap-2">
+          <input
+            type="email"
+            required
+            placeholder="teammate@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="flex-1 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-2 text-[13px] outline-none"
+          />
+          <button
+            type="submit"
+            disabled={busy || !email.trim()}
+            className="px-3 py-2 rounded-sm font-mono text-[10px] tracking-[0.14em] bg-[var(--accent-primary)] text-black hover:opacity-90 disabled:opacity-50"
+          >
+            {busy ? "INVITING…" : "INVITE"}
+          </button>
+        </form>
+      ) : (
+        <div className="text-[12px] text-[var(--fg-mute)] font-mono tracking-wider">
+          NO SEATS REMAINING · REMOVE A MEMBER OR REVOKE AN INVITE TO ADD ANOTHER
+        </div>
+      )}
+
+      {error && <StatusLine s={{ kind: "err", msg: error }} />}
+      {copyLink && (
+        <div className="mt-2 border border-[var(--border)] rounded-sm p-2">
+          <div className="font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)] mb-1">
+            SHARE THIS LINK MANUALLY
+          </div>
+          <code className="block text-[11px] font-mono break-all text-[var(--accent-primary)]">
+            {copyLink}
+          </code>
+        </div>
+      )}
+    </Card>
   );
 }
 

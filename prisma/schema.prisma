@@ -101,6 +101,51 @@ model Quote {
   @@index([exchangeListingId, timestamp])
 }
 
+/// A team is created when an Institutional owner invites their first member.
+/// Owner's Subscription applies to every active member — no separate
+/// Subscription rows for members. Cap of 5 total seats (1 owner + 4 members)
+/// enforced at the invite-creation layer.
+model Team {
+  id         String       @id @default(cuid())
+  ownerEmail String       @unique
+  name       String       @default("My team")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  members TeamMember[]
+  invites TeamInvite[]
+
+  @@index([ownerEmail])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userEmail String
+  joinedAt  DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userEmail])
+  @@index([userEmail])
+}
+
+model TeamInvite {
+  id         String    @id @default(cuid())
+  teamId     String
+  email      String
+  /// URL-safe opaque token — recipient clicks a link containing this.
+  token      String    @unique
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([email])
+}
+
 /// API key for Institutional-tier programmatic access. The full key is
 /// only shown once at generation time (returned by the create endpoint).
 /// We store a hash so we can verify incoming Bearer tokens without ever
