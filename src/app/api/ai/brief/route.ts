@@ -10,6 +10,15 @@ import {
   type AiBriefInput,
   type GeminiResponse,
 } from "@/lib/aiBrief";
+import { supabaseServer } from "@/lib/supabase/server";
+import { getSubscription } from "@/lib/subscription";
+import { bumpUsage } from "@/lib/usage";
+
+const DAILY_LIMITS: Record<string, number> = {
+  free: 0,
+  pro: 20,
+  institutional: Number.MAX_SAFE_INTEGER,
+};
 
 /**
  * POST /api/ai/brief
@@ -48,6 +57,43 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "question and category are required" },
       { status: 400 },
+    );
+  }
+
+  // Auth + tier check + daily-cap enforcement. Free users are blocked by
+  // the UI, but double-check here so a curl request can't sneak through.
+  const sb = await supabaseServer();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user?.email) {
+    return NextResponse.json(
+      { error: "Sign in to use AI Overview." },
+      { status: 401 },
+    );
+  }
+  const subInfo = await getSubscription(user.email);
+  const limit = DAILY_LIMITS[subInfo.tier] ?? 0;
+  if (limit === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "AI Overview requires a Pro or Institutional plan. See /pricing.",
+        upgradeUrl: "/pricing",
+      },
+      { status: 402 }, // Payment Required
+    );
+  }
+  const usage = await bumpUsage(user.email, "ai_overview", limit);
+  if (!usage.allowed) {
+    return NextResponse.json(
+      {
+        error: `Daily AI Overview limit reached (${usage.used}/${usage.limit}). Upgrade to Institutional for unlimited.`,
+        used: usage.used,
+        limit: usage.limit,
+        remaining: 0,
+      },
+      { status: 429 }, // Too Many Requests
     );
   }
 
@@ -166,6 +212,10 @@ export async function POST(req: Request) {
     content,
     generatedAt: new Date().toISOString(),
     headlinesUsed: headlines.length,
+    used: usage.used,
+    limit: usage.limit === Number.MAX_SAFE_INTEGER ? null : usage.limit,
+    remaining:
+      usage.limit === Number.MAX_SAFE_INTEGER ? null : usage.remaining,
   });
 }
 

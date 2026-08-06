@@ -101,6 +101,44 @@ model Quote {
   @@index([exchangeListingId, timestamp])
 }
 
+/// API key for Institutional-tier programmatic access. The full key is
+/// only shown once at generation time (returned by the create endpoint).
+/// We store a hash so we can verify incoming Bearer tokens without ever
+/// knowing the plaintext after issuance.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userEmail  String
+  name       String
+  /// SHA-256 hash of the full secret key. Unique so lookups are O(1).
+  keyHash    String    @unique
+  /// First 8 chars of the plaintext (e.g. "fk_abc12…") so we can display a
+  /// hint in the account UI without revealing the full key.
+  keyPrefix  String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userEmail])
+  @@index([keyHash])
+}
+
+/// Per-user, per-feature, per-day count. Increments on each successful
+/// feature use so we can enforce daily caps (currently: AI Overview 20/day
+/// for Pro; Institutional is unlimited).
+model UsageLog {
+  id        BigInt   @id @default(autoincrement())
+  userEmail String
+  feature   String
+  /// Date-only bucket key, UTC (e.g. "2026-06-30"). String rather than Date
+  /// because Postgres date columns get awkward with Prisma timezones.
+  day       String
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userEmail, feature, day])
+  @@index([userEmail, day])
+}
+
 /// User subscription state, mirrored from Stripe via webhooks. Keyed on
 /// the Supabase user email so we can look up tier without needing a join
 /// against Supabase's user table. `tier` and `status` gate feature access

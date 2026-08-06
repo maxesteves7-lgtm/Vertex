@@ -8,6 +8,10 @@
     {
       "path": "/api/heatmap/backfill",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/trial-nag",
+      "schedule": "0 15 * * *"
     }
   ]
 }

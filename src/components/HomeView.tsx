@@ -24,6 +24,7 @@ import { ScreenerBuilder } from "./ScreenerBuilder";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { OnboardingTour } from "./OnboardingTour";
 import { FilterDrawer } from "./FilterDrawer";
+import { useSubscription, tierHas } from "@/lib/useSubscription";
 import {
   applyFilters,
   countActive,
@@ -65,6 +66,10 @@ export function HomeView({
 }) {
   const params = useSearchParams();
   const urlQ = params.get("q") ?? "";
+  const { sub } = useSubscription();
+  const canExport = tierHas(sub.tier, "csv_export");
+  const canUnlimited = tierHas(sub.tier, "unlimited_scanner");
+  const FREE_ROW_CAP = 100;
 
   const [selection, setSelection] = useState<SidebarSelection>({
     type: "view",
@@ -561,16 +566,24 @@ export function HomeView({
             </div>
             {viewMode === "scanner" && (
               <button
-                onClick={() =>
+                onClick={() => {
+                  if (!canExport) {
+                    window.location.href = "/pricing";
+                    return;
+                  }
                   exportRowsToCsv(
                     filtered.map((x) => x.row),
                     `futurist-${heading.toLowerCase().replace(/\s+/g, "-")}.csv`,
-                  )
-                }
-                className="hidden md:inline font-mono text-[10px] tracking-[0.12em] text-[var(--fg-dim)] hover:text-[var(--accent-primary)] border border-[var(--border)] rounded-sm px-2.5 py-1"
-                title="Export current view to CSV"
+                  );
+                }}
+                className={`hidden md:inline font-mono text-[10px] tracking-[0.12em] border border-[var(--border)] rounded-sm px-2.5 py-1 ${
+                  canExport
+                    ? "text-[var(--fg-dim)] hover:text-[var(--accent-primary)]"
+                    : "text-[var(--fg-mute)] hover:text-[var(--accent-primary)]"
+                }`}
+                title={canExport ? "Export current view to CSV" : "Pro feature — click to see pricing"}
               >
-                ↓ CSV
+                {canExport ? "↓ CSV" : "🔒 CSV"}
               </button>
             )}
             <button
@@ -680,20 +693,42 @@ export function HomeView({
             onClearFilters={() => setFilters(emptyFilters)}
           />
         ) : viewMode === "scanner" ? (
-          <Scanner
-            rows={filtered.map((x) => x.row)}
-            onSelectRow={setSelectedId}
-            selectedId={selectedId}
-            highlightIdx={highlightIdx}
-            onContextMenuRow={(r, e) => openContextMenu(r, e)}
-          />
+          <>
+            <Scanner
+              rows={
+                canUnlimited
+                  ? filtered.map((x) => x.row)
+                  : filtered.slice(0, FREE_ROW_CAP).map((x) => x.row)
+              }
+              onSelectRow={setSelectedId}
+              selectedId={selectedId}
+              highlightIdx={highlightIdx}
+              onContextMenuRow={(r, e) => openContextMenu(r, e)}
+            />
+            {!canUnlimited && filtered.length > FREE_ROW_CAP && (
+              <div className="mt-3 flex items-center justify-between px-3 py-2 border border-dashed border-[var(--accent-primary)]/40 bg-[rgba(255,102,0,0.04)] rounded-sm">
+                <span className="text-[12px] text-[var(--fg)]">
+                  🔒 Free tier shows top {FREE_ROW_CAP} of{" "}
+                  {filtered.length.toLocaleString()} markets. Upgrade to unlock the full feed.
+                </span>
+                <a
+                  href="/pricing"
+                  className="px-3 py-1 rounded-sm font-mono text-[10px] tracking-[0.14em] bg-[var(--accent-primary)] text-black hover:opacity-90"
+                >
+                  SEE PRICING →
+                </a>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <div
               ref={gridRef}
               className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
             >
-              {filtered.slice(0, visible).map((x, idx) => {
+              {filtered
+                .slice(0, canUnlimited ? visible : Math.min(visible, FREE_ROW_CAP))
+                .map((x, idx) => {
                 const isWatchlist =
                   selection.type === "view" &&
                   selection.view === "Watchlist";

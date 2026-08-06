@@ -291,6 +291,9 @@ export default function AccountPage() {
           </form>
         </Card>
 
+        {/* API Keys — only visible to Institutional users */}
+        {sub?.tier === "institutional" && <ApiKeysSection />}
+
         {/* Delete account */}
         <Card title="Delete account" danger>
           <p className="text-[12px] text-[var(--fg-dim)] leading-relaxed mb-3">
@@ -372,5 +375,176 @@ function StatusLine({
     >
       {s.msg}
     </div>
+  );
+}
+
+type KeyRow = {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+};
+
+/**
+ * API keys management panel. Institutional-tier only. Shows a list of
+ * existing keys with revoke buttons and lets the user issue a new one.
+ * The plaintext key is shown ONCE right after creation — we make it
+ * copy-able and instruct the user that it can't be retrieved again.
+ */
+function ApiKeysSection() {
+  const [keys, setKeys] = useState<KeyRow[]>([]);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [justIssued, setJustIssued] = useState<
+    { name: string; key: string } | null
+  >(null);
+
+  useEffect(() => {
+    fetch("/api/account/api-keys")
+      .then((r) => r.json())
+      .then((j: { keys?: KeyRow[] }) => setKeys(j.keys ?? []))
+      .catch(() => setKeys([]));
+  }, []);
+
+  async function issue(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/account/api-keys", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const j = (await res.json()) as {
+        key?: { id: string; name: string; key: string; keyPrefix: string; createdAt: string };
+        error?: string;
+      };
+      if (!res.ok || !j.key) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setJustIssued({ name: j.key.name, key: j.key.key });
+      setName("");
+      // Refresh list
+      const list = await fetch("/api/account/api-keys").then((r) => r.json());
+      setKeys(list.keys ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create key");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke(id: string, name: string) {
+    if (!confirm(`Revoke "${name}"? Requests using it will start failing immediately.`)) return;
+    await fetch(`/api/account/api-keys?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    const list = await fetch("/api/account/api-keys").then((r) => r.json());
+    setKeys(list.keys ?? []);
+  }
+
+  return (
+    <Card title="API keys">
+      <p className="text-[12px] text-[var(--fg-dim)] mb-3 leading-relaxed">
+        Programmatic access for institutional users. Include the key as{" "}
+        <span className="font-mono text-[var(--accent-primary)]">
+          Authorization: Bearer fk_…
+        </span>{" "}
+        on requests to{" "}
+        <span className="font-mono text-[var(--fg)]">/api/v1/markets</span>.
+      </p>
+
+      {/* Just-created key — shown once */}
+      {justIssued && (
+        <div className="mb-4 border border-[var(--accent-primary)] rounded-sm bg-[rgba(255,102,0,0.06)] p-3">
+          <div className="font-mono text-[10px] tracking-[0.14em] text-[var(--accent-primary)] mb-1">
+            KEY CREATED · COPY IT NOW
+          </div>
+          <p className="text-[11px] text-[var(--fg-dim)] mb-2">
+            <strong className="text-[var(--fg)]">{justIssued.name}</strong>.
+            This is the only time the full key will be shown. If you lose it
+            you&apos;ll need to issue a new one.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-sm px-2 py-1.5 text-[12px] font-mono break-all">
+              {justIssued.key}
+            </code>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(justIssued.key);
+              }}
+              className="px-2 py-1.5 font-mono text-[10px] tracking-[0.14em] border border-[var(--border)] hover:border-[var(--accent-primary)]"
+            >
+              COPY
+            </button>
+          </div>
+          <button
+            onClick={() => setJustIssued(null)}
+            className="mt-2 font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)] hover:text-[var(--fg)]"
+          >
+            DISMISS
+          </button>
+        </div>
+      )}
+
+      {/* Existing keys list */}
+      {keys.length > 0 && (
+        <ul className="mb-4 border border-[var(--border)] rounded-sm divide-y divide-[var(--border-soft)]">
+          {keys.map((k) => (
+            <li
+              key={k.id}
+              className="flex items-center gap-3 px-3 py-2"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] text-[var(--fg)] truncate">
+                  {k.name}
+                  {k.revokedAt && (
+                    <span className="ml-2 font-mono text-[10px] text-[var(--accent-down)]">
+                      REVOKED
+                    </span>
+                  )}
+                </div>
+                <div className="font-mono text-[10px] text-[var(--fg-mute)]">
+                  {k.keyPrefix} ·{" "}
+                  {k.lastUsedAt
+                    ? `last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
+                    : "never used"}
+                </div>
+              </div>
+              {!k.revokedAt && (
+                <button
+                  onClick={() => revoke(k.id, k.name)}
+                  className="px-2 py-1 font-mono text-[10px] tracking-[0.14em] border border-[var(--accent-down)] text-[var(--accent-down)] rounded-sm hover:bg-[var(--accent-down)] hover:text-[var(--fg)]"
+                >
+                  REVOKE
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Create new key */}
+      <form onSubmit={issue} className="flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Key label (e.g. Prod scanner backend)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          className="flex-1 bg-[var(--bg)] border border-[var(--border)] focus:border-[var(--accent-primary)] rounded-sm px-3 py-2 text-[13px] outline-none"
+        />
+        <button
+          type="submit"
+          disabled={busy || !name.trim()}
+          className="px-3 py-2 rounded-sm font-mono text-[10px] tracking-[0.14em] bg-[var(--accent-primary)] text-black hover:opacity-90 disabled:opacity-50"
+        >
+          {busy ? "ISSUING…" : "ISSUE KEY"}
+        </button>
+      </form>
+      {error && <StatusLine s={{ kind: "err", msg: error }} />}
+    </Card>
   );
 }

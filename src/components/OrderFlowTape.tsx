@@ -3,6 +3,8 @@
 import { useMemo, useState, useEffect } from "react";
 import type { TradeEvent } from "@/lib/exchanges/types";
 import { fmtPct, fmtUsd, fmtSmartTime } from "@/lib/format";
+import { useSubscription, tierHas } from "@/lib/useSubscription";
+import { UpgradePrompt } from "./UpgradePrompt";
 
 const MIN_SIZE_OPTIONS = [
   { label: "$500+", value: 500 },
@@ -18,6 +20,9 @@ const SIZE_FILTER_KEY = "vertex.flow.minSize.v1";
 const WHALE_THRESHOLD = 25_000;
 
 export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
+  const { loaded, sub } = useSubscription();
+  const canView = tierHas(sub.tier, "order_flow");
+
   const [minSize, setMinSize] = useState<number>(500);
   const [side, setSide] = useState<"ALL" | "BUY" | "SELL">("ALL");
   const [search, setSearch] = useState("");
@@ -59,6 +64,27 @@ export function OrderFlowTape({ trades }: { trades: TradeEvent[] }) {
       sellCount: sells.length,
     };
   }, [filtered]);
+
+  if (loaded && !canView) {
+    return (
+      <div className="flex-1 flex flex-col px-6 py-5">
+        <div className="mb-5">
+          <h1 className="text-[20px] font-semibold text-[var(--fg)] tracking-tight">
+            Order Flow
+          </h1>
+          <p className="text-[12px] text-[var(--fg-dim)] mt-0.5">
+            Live large-trade tape from Polymarket — buy/sell pressure, whale
+            activity, market-by-market.
+          </p>
+        </div>
+        <UpgradePrompt
+          feature="Order Flow tape"
+          requiredTier="pro"
+          currentTier={sub.tier}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col px-6 py-5">

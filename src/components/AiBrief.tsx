@@ -12,6 +12,9 @@ type Resp = {
   content: string;
   generatedAt?: string | null;
   headlinesUsed?: number;
+  used?: number;
+  limit?: number | null;
+  remaining?: number | null;
   error?: string;
 };
 
@@ -19,6 +22,9 @@ type Cached = {
   content: string;
   generatedAt: string;
   headlinesUsed: number;
+  used?: number;
+  limit?: number | null;
+  remaining?: number | null;
 };
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -57,8 +63,24 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
   const [state, setState] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
-    | { kind: "ready"; content: string; generatedAt: string; headlinesUsed: number }
-    | { kind: "stale"; content: string; generatedAt: string; headlinesUsed: number }
+    | {
+        kind: "ready";
+        content: string;
+        generatedAt: string;
+        headlinesUsed: number;
+        used?: number;
+        limit?: number | null;
+        remaining?: number | null;
+      }
+    | {
+        kind: "stale";
+        content: string;
+        generatedAt: string;
+        headlinesUsed: number;
+        used?: number;
+        limit?: number | null;
+        remaining?: number | null;
+      }
     | { kind: "error"; message: string }
     | { kind: "setup" }
   >({ kind: "idle" });
@@ -80,6 +102,9 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
                 content: cached.content,
                 generatedAt: cached.generatedAt,
                 headlinesUsed: cached.headlinesUsed ?? 0,
+                used: cached.used,
+                limit: cached.limit,
+                remaining: cached.remaining,
               });
               return;
             }
@@ -88,6 +113,9 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
               content: cached.content,
               generatedAt: cached.generatedAt,
               headlinesUsed: cached.headlinesUsed ?? 0,
+              used: cached.used,
+              limit: cached.limit,
+              remaining: cached.remaining,
             });
           }
         } catch {
@@ -139,6 +167,9 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
           content: json.content,
           generatedAt,
           headlinesUsed,
+          used: json.used,
+          limit: json.limit,
+          remaining: json.remaining,
         });
         try {
           localStorage.setItem(
@@ -147,6 +178,9 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
               content: json.content,
               generatedAt,
               headlinesUsed,
+              used: json.used,
+              limit: json.limit,
+              remaining: json.remaining,
             } satisfies Cached),
           );
         } catch {
@@ -201,6 +235,9 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
               UPDATED {fmtSmartTime(new Date(state.generatedAt))}
               {state.headlinesUsed > 0
                 ? ` · ${state.headlinesUsed} HEADLINES`
+                : ""}
+              {typeof state.limit === "number" && typeof state.used === "number"
+                ? ` · ${state.used}/${state.limit} TODAY`
                 : ""}
               {state.kind === "stale" ? " · STALE" : ""}
             </span>

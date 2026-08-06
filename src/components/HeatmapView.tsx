@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CATEGORY_TREE } from "@/lib/categories";
+import { useSubscription, tierHas } from "@/lib/useSubscription";
+import { UpgradePrompt } from "./UpgradePrompt";
 
 type Market = {
   tokenId: string;
@@ -30,6 +32,9 @@ type Window = "7d" | "30d" | "90d";
  * = red. Diagonal always ρ=1 (each market vs itself).
  */
 export function HeatmapView() {
+  const { loaded, sub } = useSubscription();
+  const canView = tierHas(sub.tier, "correlation_heatmap");
+
   const [category, setCategory] = useState<string>("All");
   const [timeWindow, setTimeWindow] = useState<Window>("30d");
   const [data, setData] = useState<HeatmapResp | null>(null);
@@ -115,6 +120,26 @@ export function HeatmapView() {
   }
 
   const isEmpty = data && (data.empty || data.markets.length < 2);
+
+  if (loaded && !canView) {
+    return (
+      <section className="flex-1 flex flex-col px-4 md:px-6 py-5">
+        <div className="mb-5">
+          <h1 className="text-[20px] font-semibold text-[var(--fg)] tracking-tight">
+            Correlation Heatmap
+          </h1>
+          <p className="text-[12px] text-[var(--fg-dim)] mt-0.5">
+            N×N Pearson ρ across the top-volume markets — persistent, nightly-backfilled.
+          </p>
+        </div>
+        <UpgradePrompt
+          feature="Correlation Heatmap"
+          requiredTier="pro"
+          currentTier={sub.tier}
+        />
+      </section>
+    );
+  }
 
   return (
     <section className="flex-1 flex flex-col px-4 md:px-6 py-5 min-h-0">
