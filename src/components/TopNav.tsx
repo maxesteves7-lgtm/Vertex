@@ -18,6 +18,7 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: "/news", label: "NEWS" },
   { href: "/calendar", label: "CAL" },
   { href: "/resolved", label: "RESOLVED" },
+  { href: "/pricing", label: "PRICING" },
 ];
 
 export function TopNav() {

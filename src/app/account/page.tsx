@@ -6,6 +6,17 @@ import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
 import { AuthShell, NotConfigured } from "../login/page";
 
+type SubResp = {
+  signedIn: boolean;
+  email: string | null;
+  subscription: {
+    tier: "free" | "pro" | "institutional";
+    status: string;
+    currentPeriodEnd: string | null;
+    cancelAtPeriodEnd: boolean;
+  };
+};
+
 export default function AccountPage() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
@@ -25,6 +36,8 @@ export default function AccountPage() {
 
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sub, setSub] = useState<SubResp["subscription"] | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -40,8 +53,31 @@ export default function AccountPage() {
       }
       setEmail(u.email ?? null);
       setLoaded(true);
+      // Load subscription state in parallel; failure is non-fatal
+      fetch("/api/subscription")
+        .then((r) => r.json())
+        .then((j: SubResp) => setSub(j.subscription))
+        .catch(() => {
+          /* ignore */
+        });
     });
   }, [router]);
+
+  async function openPortal() {
+    setPortalBusy(true);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const j = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !j.url) throw new Error(j.error ?? `HTTP ${res.status}`);
+      window.location.href = j.url;
+    } catch (e) {
+      alert(
+        `Portal open failed: ${e instanceof Error ? e.message : "unknown"}. ` +
+          `Make sure STRIPE_SECRET_KEY is set and you have an active subscription.`,
+      );
+      setPortalBusy(false);
+    }
+  }
 
   if (!isSupabaseConfigured()) return <NotConfigured />;
   if (!loaded) {
@@ -138,6 +174,77 @@ export default function AccountPage() {
             </Link>
           </p>
         </div>
+
+        {/* Subscription */}
+        <Card title="Subscription">
+          {sub ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-mono text-[10px] tracking-[0.14em] text-[var(--fg-mute)]">
+                    CURRENT PLAN
+                  </div>
+                  <div className="text-[18px] font-semibold text-[var(--fg)] mt-0.5">
+                    {sub.tier === "free"
+                      ? "Free"
+                      : sub.tier === "pro"
+                        ? "Pro"
+                        : "Institutional"}
+                  </div>
+                  <div className="text-[11px] font-mono text-[var(--fg-dim)] mt-0.5">
+                    Status: {sub.status.toUpperCase()}
+                    {sub.currentPeriodEnd && sub.tier !== "free" && (
+                      <>
+                        {" · "}
+                        {sub.cancelAtPeriodEnd ? "Ends" : "Renews"}{" "}
+                        {new Date(sub.currentPeriodEnd).toLocaleDateString()}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-sm font-mono text-[10px] tracking-[0.14em] ${
+                    sub.tier === "free"
+                      ? "bg-[var(--bg-row)] text-[var(--fg-dim)]"
+                      : "bg-[var(--accent-primary)] text-black"
+                  }`}
+                >
+                  {sub.tier.toUpperCase()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {sub.tier === "free" ? (
+                  <Link
+                    href="/pricing"
+                    className="px-3 py-1.5 rounded-sm font-mono text-[10px] tracking-[0.14em] bg-[var(--accent-primary)] text-black hover:opacity-90"
+                  >
+                    UPGRADE
+                  </Link>
+                ) : (
+                  <button
+                    onClick={openPortal}
+                    disabled={portalBusy}
+                    className="px-3 py-1.5 rounded-sm font-mono text-[10px] tracking-[0.14em] border border-[var(--border)] hover:border-[var(--fg-mute)] disabled:opacity-50"
+                  >
+                    {portalBusy
+                      ? "OPENING…"
+                      : "MANAGE SUBSCRIPTION"}
+                  </button>
+                )}
+                <Link
+                  href="/pricing"
+                  className="px-3 py-1.5 rounded-sm font-mono text-[10px] tracking-[0.14em] text-[var(--fg-dim)] hover:text-[var(--accent-primary)]"
+                >
+                  SEE PLANS
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="text-[12px] text-[var(--fg-mute)] font-mono">
+              Loading subscription…
+            </div>
+          )}
+        </Card>
 
         {/* Change email */}
         <Card title="Change email">

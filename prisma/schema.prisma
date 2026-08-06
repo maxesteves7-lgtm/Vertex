@@ -101,6 +101,30 @@ model Quote {
   @@index([exchangeListingId, timestamp])
 }
 
+/// User subscription state, mirrored from Stripe via webhooks. Keyed on
+/// the Supabase user email so we can look up tier without needing a join
+/// against Supabase's user table. `tier` and `status` gate feature access
+/// across the app.
+model Subscription {
+  id                   String    @id @default(cuid())
+  userEmail            String    @unique
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  /// "free" | "pro" | "institutional"
+  tier                 String    @default("free")
+  /// "active" | "trialing" | "canceled" | "past_due" | "incomplete"
+  status               String    @default("active")
+  /// "monthly" | "yearly" — null on free
+  interval             String?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([userEmail])
+  @@index([stripeCustomerId])
+}
+
 /// Historical YES-probability observation captured by the heatmap backfill
 /// cron. One row per (tokenId, hour-bucket). Used to compute the global
 /// N×N correlation matrix without hitting Polymarket for every query.

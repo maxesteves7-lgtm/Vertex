@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ScreenerRow } from "@/lib/exchanges/types";
 import { fmtSmartTime } from "@/lib/format";
 import { getSource } from "./EventCard";
+import { UpgradePrompt } from "./UpgradePrompt";
+import type { Tier } from "@/lib/stripe";
 
 type Resp = {
   configured: boolean;
@@ -31,6 +33,27 @@ const CACHE_KEY_PREFIX = "vertex.aiBrief.";
  * loading skeleton, stale-then-refresh, error retry, setup hint, disclaimer.
  */
 export function AiBrief({ row }: { row: ScreenerRow }) {
+  // Subscription check — free-tier users see UpgradePrompt instead of the
+  // panel. Loaded once on mount; not cached across renders because we want
+  // the panel to refresh after a successful upgrade round-trip.
+  const [tier, setTier] = useState<Tier | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/subscription")
+      .then((r) => r.json())
+      .then((j: { subscription?: { tier?: Tier } }) => {
+        if (cancelled) return;
+        setTier(j.subscription?.tier ?? "free");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTier("free");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [state, setState] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
@@ -144,6 +167,23 @@ export function AiBrief({ row }: { row: ScreenerRow }) {
     lastRowIdRef.current = row.id;
     generate(false);
   }, [row.id, generate]);
+
+  // Gate: free users see UpgradePrompt. Institutional + Pro get the panel.
+  if (tier === null) {
+    // Still loading — render a subtle placeholder to avoid flicker
+    return (
+      <div className="h-16 rounded-sm border border-dashed border-[var(--border)] animate-pulse" />
+    );
+  }
+  if (tier === "free") {
+    return (
+      <UpgradePrompt
+        feature="AI Overview"
+        requiredTier="pro"
+        currentTier={tier}
+      />
+    );
+  }
 
   return (
     <div>
