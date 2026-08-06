@@ -57,18 +57,49 @@ export async function POST(req: Request) {
     );
   }
 
+  // Resolve — or create — a Stripe Customer keyed to the SIGNED-IN email.
+  // Passing `customer_email` alone lets Stripe Link autofill override with a
+  // saved-card email at Checkout, silently attaching the subscription to the
+  // wrong account. Explicitly creating the customer server-side locks the
+  // email to the one on our Supabase user.
   const existing = await prisma.subscription.findUnique({
     where: { userEmail: user.email },
   });
 
+  const s = stripe();
+  let customerId = existing?.stripeCustomerId ?? null;
+  if (!customerId) {
+    // Deduplicate on the Stripe side — if there's already a Customer with
+    // this email from a prior session, reuse it instead of creating a twin.
+    const found = await s.customers.list({ email: user.email, limit: 1 });
+    customerId =
+      found.data[0]?.id ??
+      (
+        await s.customers.create({
+          email: user.email,
+          metadata: { userEmail: user.email, supabaseUserId: user.id },
+        })
+      ).id;
+    // Persist the linkage so subsequent checkouts hit the fast path
+    await prisma.subscription.upsert({
+      where: { userEmail: user.email },
+      create: {
+        userEmail: user.email,
+        stripeCustomerId: customerId,
+        tier: "free",
+        status: "incomplete",
+      },
+      update: { stripeCustomerId: customerId },
+    });
+  }
+
   const origin = new URL(req.url).origin;
 
-  const session = await stripe().checkout.sessions.create({
+  const session = await s.checkout.sessions.create({
     mode: "subscription",
     payment_method_types: ["card"],
     line_items: [{ price: priceId, quantity: 1 }],
-    customer: existing?.stripeCustomerId ?? undefined,
-    customer_email: existing?.stripeCustomerId ? undefined : user.email,
+    customer: customerId, // locked; Link/autofill cannot override
     client_reference_id: user.id,
     metadata: { userEmail: user.email, tier, interval },
     subscription_data: {
