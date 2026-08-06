@@ -109,11 +109,16 @@ async function handleSubscriptionUpsert(sub: Stripe.Subscription) {
   const tier: Tier = derived?.tier ?? "free";
   const interval = derived?.interval ?? null;
 
-  const currentPeriodEnd = new Date(
-    (sub as unknown as { current_period_end?: number }).current_period_end
-      ? ((sub as unknown as { current_period_end: number }).current_period_end) * 1000
-      : Date.now(),
-  );
+  // Stripe API >= 2024-06 moved `current_period_end` off the Subscription
+  // root and onto each SubscriptionItem. For trialing subs, `trial_end`
+  // is the source of truth for when the first invoice fires. Read in this
+  // order: trial_end → root.current_period_end (older API) → item.current_period_end.
+  const rootCpe = (sub as unknown as { current_period_end?: number }).current_period_end;
+  const itemCpe = (
+    sub.items.data[0] as unknown as { current_period_end?: number } | undefined
+  )?.current_period_end;
+  const periodEndSec = sub.trial_end ?? rootCpe ?? itemCpe ?? null;
+  const currentPeriodEnd = periodEndSec ? new Date(periodEndSec * 1000) : null;
 
   // Locate user email — prefer metadata, fall back to a customer lookup on Stripe
   let userEmail: string | null = email;
