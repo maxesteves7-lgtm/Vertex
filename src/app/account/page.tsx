@@ -385,7 +385,7 @@ type TeamResp = {
   team: { id: string; ownerEmail: string; name: string } | null;
   isOwner: boolean;
   members: Array<{ id: string; userEmail: string; joinedAt: string }>;
-  invites: Array<{ id: string; email: string; expiresAt: string; createdAt: string }>;
+  invites: Array<{ id: string; email: string; token: string; expiresAt: string; createdAt: string }>;
   seatsUsed: number;
   seatsMax: number;
 };
@@ -554,6 +554,16 @@ function TeamSection() {
                 {new Date(i.expiresAt).toLocaleDateString()}
               </div>
             </div>
+            <button
+              onClick={() => {
+                const link = `${window.location.origin}/team/accept?token=${encodeURIComponent(i.token)}`;
+                navigator.clipboard.writeText(link);
+                alert(`Copied invite link for ${i.email}. Paste it in a text/DM.`);
+              }}
+              className="px-2 py-1 font-mono text-[10px] tracking-[0.14em] border border-[var(--accent-primary)] text-[var(--accent-primary)] rounded-sm hover:bg-[var(--accent-primary)] hover:text-black"
+            >
+              COPY LINK
+            </button>
             <button
               onClick={() => revokeInvite(i.id)}
               className="px-2 py-1 font-mono text-[10px] tracking-[0.14em] border border-[var(--border)] text-[var(--fg-dim)] hover:text-[var(--fg)]"

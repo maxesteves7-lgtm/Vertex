@@ -27,6 +27,7 @@ export type MemberShape = {
 export type InviteShape = {
   id: string;
   email: string;
+  token: string;
   expiresAt: string;
   createdAt: string;
 };
@@ -96,6 +97,7 @@ export async function listInvites(teamId: string): Promise<InviteShape[]> {
   return rows.map((r) => ({
     id: r.id,
     email: r.email,
+    token: r.token,
     expiresAt: r.expiresAt.toISOString(),
     createdAt: r.createdAt.toISOString(),
   }));
@@ -183,6 +185,7 @@ export async function inviteMember(
     invite: {
       id: invite.id,
       email: invite.email,
+      token: invite.token,
       expiresAt: invite.expiresAt.toISOString(),
       createdAt: invite.createdAt.toISOString(),
     },
