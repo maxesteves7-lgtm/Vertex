@@ -7,6 +7,7 @@ import { CommandBar } from "@/components/CommandBar";
 import { MacroTicker } from "@/components/MacroTicker";
 import { Footer } from "@/components/Footer";
 import { CookieBanner } from "@/components/CookieBanner";
+import { PostHogProvider } from "@/components/PostHogProvider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -50,14 +51,18 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--fg)]">
-        <Suspense fallback={<div className="h-14 border-b border-[var(--border)]" />}>
-          <TopNav />
+        <Suspense fallback={null}>
+          <PostHogProvider>
+            <Suspense fallback={<div className="h-14 border-b border-[var(--border)]" />}>
+              <TopNav />
+            </Suspense>
+            <MacroTicker />
+            {children}
+            <Footer />
+            <CookieBanner />
+            <CommandBar />
+          </PostHogProvider>
         </Suspense>
-        <MacroTicker />
-        {children}
-        <Footer />
-        <CookieBanner />
-        <CommandBar />
       </body>
     </html>
   );

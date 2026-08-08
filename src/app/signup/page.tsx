@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
+import { identify, track } from "@/lib/analytics";
 import {
   AuthShell,
   Field,
@@ -48,6 +49,8 @@ export default function SignupPage() {
         },
       });
       if (error) throw error;
+      identify(email);
+      track("signup_completed");
       setSent(true);
     } catch (e) {
       setError(explainFetchError(e));

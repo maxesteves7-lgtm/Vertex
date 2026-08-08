@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
 import { AuthShell, NotConfigured } from "../login/page";
+import { track, identify, resetAnalytics } from "@/lib/analytics";
 
 type SubResp = {
   signedIn: boolean;
@@ -53,6 +54,15 @@ export default function AccountPage() {
       }
       setEmail(u.email ?? null);
       setLoaded(true);
+      if (u.email) identify(u.email);
+      // Detect Stripe Checkout return + fire funnel-completion event once
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("checkout") === "success") {
+        track("checkout_completed");
+        // Clean the query so re-refreshes don't re-fire
+        const clean = window.location.pathname;
+        window.history.replaceState({}, "", clean);
+      }
       // Load subscription state in parallel; failure is non-fatal
       fetch("/api/subscription")
         .then((r) => r.json())
@@ -431,6 +441,7 @@ function TeamSection() {
         error?: string;
       };
       if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      track("invite_sent", { email_delivered: !j.emailWarning });
       setEmail("");
       if (j.emailWarning && j.acceptUrl) {
         setCopyLink(j.acceptUrl);

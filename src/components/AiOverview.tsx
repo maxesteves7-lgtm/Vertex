@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ScreenerRow } from "@/lib/exchanges/types";
 import { fmtSmartTime } from "@/lib/format";
+import { track } from "@/lib/analytics";
 
 type WireItem = {
   title: string;
@@ -111,6 +112,10 @@ export function AiOverview({ row }: { row: ScreenerRow }) {
         if (json.items.length === 0) {
           setState({ kind: "empty", query: json.query });
         } else {
+          track("ai_overview_generated", {
+            category: row.bucket,
+            item_count: json.items.length,
+          });
           setState({
             kind: "ready",
             items: json.items,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@/lib/analytics";
 
 type Props = {
   exchange: "POLYMARKET" | "KALSHI";
@@ -56,6 +57,12 @@ export function AlertButton({
         throw new Error((j as { error?: string }).error ?? `HTTP ${res.status}`);
       }
       setStatus("saved");
+      track("alert_created", {
+        exchange,
+        rule: direction,
+        threshold_pct: thresholdPct,
+        channel,
+      });
       setTimeout(() => {
         setOpen(false);
         setStatus("idle");

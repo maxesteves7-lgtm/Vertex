@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
+import { identify, track } from "@/lib/analytics";
 
 /**
  * Page-level Suspense boundary — required by Next 16 because `useSearchParams`
@@ -41,6 +42,8 @@ function LoginInner() {
       const sb = supabaseBrowser();
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      identify(email);
+      track("login_completed");
       router.push(next);
       router.refresh();
     } catch (e) {

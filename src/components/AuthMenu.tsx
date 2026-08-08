@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
+import { resetAnalytics } from "@/lib/analytics";
 
 /**
  * TopNav account menu. Guest state = Sign In / Sign Up buttons. Signed-in =
@@ -53,6 +54,7 @@ export function AuthMenu() {
   async function signOut() {
     const sb = supabaseBrowser();
     await sb.auth.signOut();
+    resetAnalytics();
     setOpen(false);
     router.refresh();
   }

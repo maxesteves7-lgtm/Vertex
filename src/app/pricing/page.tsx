@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TIERS, type BillingInterval, type Tier } from "@/lib/stripe";
+import { track } from "@/lib/analytics";
 
 /**
  * Pricing page — three-tier comparison with monthly/yearly toggle. Uses
@@ -23,6 +24,7 @@ export default function PricingPage() {
     }
     setBusy(tier);
     setError(null);
+    track("checkout_started", { tier, interval });
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
