@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
 import { AuthShell, NotConfigured } from "../../login/page";
+import { track } from "@/lib/analytics";
 
 export default function TeamAcceptPage() {
   return (
@@ -60,6 +61,7 @@ function AcceptInner() {
         ownerEmail?: string;
       };
       if (!j.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      track("invite_accepted");
       setState({
         kind: "ok",
         teamName: j.teamName ?? "team",

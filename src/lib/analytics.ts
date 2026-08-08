@@ -3,9 +3,9 @@
  * loaded (server-side, first render, or env vars missing) so callers never
  * need a null check.
  *
- * Design note: we intentionally do NOT import posthog-js here. The provider
- * (PostHogProvider) attaches the client to `window.posthog`; this helper
- * reads it lazily. That keeps analytics code out of every route bundle.
+ * Design note: instrumentation-client.ts attaches the initialized client to
+ * window.posthog; this helper reads it lazily. That keeps analytics code out
+ * of every route bundle.
  */
 
 type Props = Record<string, string | number | boolean | null | undefined>;
@@ -24,6 +24,7 @@ export type EventName =
   | "invite_accepted"
   | "csv_exported"
   | "screener_saved"
+  | "watchlist_updated"
   | "feature_gated"; // fired when user hits a paywall — great funnel signal
 
 interface PostHogLike {
@@ -42,9 +43,12 @@ export function track(name: EventName, props?: Props): void {
   ph()?.capture(name, props);
 }
 
-/** Call after login / on session restore so events attach to the user. */
-export function identify(userEmail: string, props?: Props): void {
-  ph()?.identify(userEmail, { email: userEmail, ...(props ?? {}) });
+/**
+ * Call after login or session restore with the auth provider's immutable user
+ * ID. PII such as email belongs in person properties, never the distinct ID.
+ */
+export function identify(userId: string, props?: Props): void {
+  ph()?.identify(userId, props);
 }
 
 /** Call on logout so the next session starts anonymous. */

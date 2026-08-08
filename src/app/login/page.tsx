@@ -40,9 +40,11 @@ function LoginInner() {
     setBusy(true);
     try {
       const sb = supabaseBrowser();
-      const { error } = await sb.auth.signInWithPassword({ email, password });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      identify(email);
+      const user = data.user;
+      if (!user) throw new Error("Sign-in succeeded without a user session.");
+      identify(user.id, { email: user.email ?? null });
       track("login_completed");
       router.push(next);
       router.refresh();

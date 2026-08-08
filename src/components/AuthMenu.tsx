@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
-import { resetAnalytics } from "@/lib/analytics";
+import { identify, resetAnalytics } from "@/lib/analytics";
 
 /**
  * TopNav account menu. Guest state = Sign In / Sign Up buttons. Signed-in =
@@ -18,19 +18,31 @@ export function AuthMenu() {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const identifiedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       setLoaded(true);
       return;
     }
+    const identifyUser = (user: { id: string; email?: string | null }) => {
+      if (identifiedUserIdRef.current === user.id) return;
+      identify(user.id, { email: user.email ?? null });
+      identifiedUserIdRef.current = user.id;
+    };
+
     const sb = supabaseBrowser();
     sb.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null);
+      const user = data.user;
+      setEmail(user?.email ?? null);
+      if (user) identifyUser(user);
       setLoaded(true);
     });
-    const { data: sub } = sb.auth.onAuthStateChange((_ev, session) => {
-      setEmail(session?.user?.email ?? null);
+    const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+      setEmail(user?.email ?? null);
+      if (user) identifyUser(user);
+      else identifiedUserIdRef.current = null;
     });
     return () => sub.subscription.unsubscribe();
   }, []);

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase/client";
 import { AuthShell, NotConfigured } from "../login/page";
-import { track, identify, resetAnalytics } from "@/lib/analytics";
+import { track, resetAnalytics } from "@/lib/analytics";
 
 type SubResp = {
   signedIn: boolean;
@@ -54,7 +54,6 @@ export default function AccountPage() {
       }
       setEmail(u.email ?? null);
       setLoaded(true);
-      if (u.email) identify(u.email);
       // Detect Stripe Checkout return + fire funnel-completion event once
       const sp = new URLSearchParams(window.location.search);
       if (sp.get("checkout") === "success") {
@@ -154,6 +153,7 @@ export default function AccountPage() {
       // Locally sign out to clear cookies, then bounce home
       const sb = supabaseBrowser();
       await sb.auth.signOut();
+      resetAnalytics();
       router.push("/?deleted=1");
       router.refresh();
     } catch (e) {
