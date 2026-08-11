@@ -1,38 +1,55 @@
 import { NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
 
 /**
  * GET /api/debug/sentry
  *
- * Explicitly captures a test error via the Sentry SDK, flushes, and returns
- * a diagnostic payload showing whether the DSN was seen and whether the
- * capture succeeded. `?ok=1` returns without capturing.
- *
- * We use `captureException` + `flush` rather than a bare `throw` so we know
- * definitively whether the failure is (a) DSN missing, (b) SDK not initialized,
- * or (c) network to Sentry ingest.
+ * Bulletproof diagnostic. Reports whether the DSN env vars are visible,
+ * whether @sentry/nextjs can be dynamically imported, and whether a
+ * captureException + flush cycle completes. Never throws — always returns
+ * a JSON payload we can read from the browser.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   if (url.searchParams.get("ok") === "1") {
-    return NextResponse.json({ route: "reachable", triggered: false });
+    return NextResponse.json({ route: "reachable" });
   }
 
-  const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN ?? null;
-  const eventId = Sentry.captureException(
-    new Error(
-      `sentry test error — triggered from /api/debug/sentry at ${new Date().toISOString()}`,
-    ),
-  );
-  const flushed = await Sentry.flush(3000);
+  const publicDsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? null;
+  const serverDsn = process.env.SENTRY_DSN ?? null;
+  const dsn = serverDsn ?? publicDsn;
 
-  return NextResponse.json({
-    dsnSeen: !!dsn,
-    dsnHost: dsn ? new URL(dsn).host : null,
-    eventId: eventId ?? null,
-    flushed,
-    note: eventId
-      ? "Check Sentry Issues within ~60 seconds"
-      : "captureException returned no event id — DSN likely missing or SDK not initialized",
-  });
+  const diag: Record<string, unknown> = {
+    hasServerDsn: !!serverDsn,
+    hasPublicDsn: !!publicDsn,
+    dsnHost: dsn ? safeHost(dsn) : null,
+    org: process.env.SENTRY_ORG ?? null,
+    project: process.env.SENTRY_PROJECT ?? null,
+    nodeEnv: process.env.NODE_ENV,
+    runtime: process.env.NEXT_RUNTIME ?? null,
+  };
+
+  try {
+    const Sentry = await import("@sentry/nextjs");
+    diag.sentryImport = "ok";
+    const eventId = Sentry.captureException(
+      new Error(
+        `sentry test error — ${new Date().toISOString()}`,
+      ),
+    );
+    diag.eventId = eventId ?? null;
+    diag.flushed = await Sentry.flush(3000);
+  } catch (e) {
+    diag.sentryImport = "failed";
+    diag.error = e instanceof Error ? e.message : String(e);
+  }
+
+  return NextResponse.json(diag);
+}
+
+function safeHost(u: string): string | null {
+  try {
+    return new URL(u).host;
+  } catch {
+    return null;
+  }
 }
