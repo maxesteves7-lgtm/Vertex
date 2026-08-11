@@ -25,17 +25,29 @@ const FREE: ClientSubscription = {
 };
 
 /**
- * Client-side subscription hook. Reads /api/subscription on mount,
- * exposes `{ loaded, signedIn, email, sub }`. Cached at the module level
- * so multiple gates on the same page share a single fetch.
+ * Client-side subscription hook. Reads /api/subscription, exposes
+ * `{ loaded, signedIn, email, sub }`. In-flight requests are deduped so
+ * multiple gates on the same page share a single fetch, and the resolved
+ * result is cached for a short TTL so gates that mount seconds apart don't
+ * refetch — but the cache expires so newly-purchased subscriptions get
+ * picked up on the next navigation without a hard reload.
+ *
+ * The old "cache-forever" version had a real bug: if the page ever loaded
+ * while the user was signed out (or before Stripe finished processing),
+ * every downstream gate stayed pinned at "free" for the rest of the browser
+ * session — so an Institutional user could see paywall prompts on Order Flow
+ * and Heatmap. TTL fixes that at a negligible cost.
  */
+const TTL_MS = 10_000;
 let cachedPromise: Promise<State> | null = null;
+let cachedAt = 0;
 
 async function loadOnce(): Promise<State> {
-  if (cachedPromise) return cachedPromise;
+  if (cachedPromise && Date.now() - cachedAt < TTL_MS) return cachedPromise;
+  cachedAt = Date.now();
   cachedPromise = (async () => {
     try {
-      const r = await fetch("/api/subscription");
+      const r = await fetch("/api/subscription", { cache: "no-store" });
       const j = (await r.json()) as {
         signedIn?: boolean;
         email?: string | null;
@@ -57,6 +69,7 @@ async function loadOnce(): Promise<State> {
 /** Force re-fetch — call after upgrade/downgrade so gates re-evaluate. */
 export function refreshSubscription() {
   cachedPromise = null;
+  cachedAt = 0;
 }
 
 export function useSubscription(): State {
