@@ -31,8 +31,24 @@ export function Footer() {
           for details.
         </div>
 
-        {/* Nav links */}
-        <nav className="flex items-center flex-wrap gap-3 font-mono text-[10px] tracking-[0.14em]">
+        {/* Nav links — grouped: Company · Legal */}
+        <nav className="flex items-center flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] tracking-[0.14em]">
+          <Link href="/faq" className="hover:text-[var(--accent-primary)]">
+            FAQ
+          </Link>
+          <Link href="/changelog" className="hover:text-[var(--accent-primary)]">
+            CHANGELOG
+          </Link>
+          <Link href="/status" className="hover:text-[var(--accent-primary)]">
+            STATUS
+          </Link>
+          <Link href="/security" className="hover:text-[var(--accent-primary)]">
+            SECURITY
+          </Link>
+          <Link href="/contact" className="hover:text-[var(--accent-primary)]">
+            CONTACT
+          </Link>
+          <span className="text-[var(--fg-mute)]">·</span>
           <Link
             href="/legal/risk-disclosure"
             className="hover:text-[var(--accent-primary)]"
