@@ -45,6 +45,24 @@ export function Footer() {
           >
             DATA SOURCES
           </Link>
+          <Link
+            href="/legal/terms"
+            className="hover:text-[var(--accent-primary)]"
+          >
+            TERMS
+          </Link>
+          <Link
+            href="/legal/privacy"
+            className="hover:text-[var(--accent-primary)]"
+          >
+            PRIVACY
+          </Link>
+          <Link
+            href="/legal/cookies"
+            className="hover:text-[var(--accent-primary)]"
+          >
+            COOKIES
+          </Link>
         </nav>
       </div>
     </footer>
