@@ -41,7 +41,7 @@ export default function SignupPage() {
     setBusy(true);
     try {
       const sb = supabaseBrowser();
-      const { error } = await sb.auth.signUp({
+      const { data, error } = await sb.auth.signUp({
         email,
         password,
         options: {
@@ -49,7 +49,7 @@ export default function SignupPage() {
         },
       });
       if (error) throw error;
-      identify(email);
+      if (data.user) identify(data.user.id, { email: data.user.email ?? null });
       track("signup_completed");
       setSent(true);
     } catch (e) {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Tier } from "@/lib/stripe";
+import { track } from "@/lib/analytics";
 
 /**
  * Tasteful inline upgrade prompt used wherever a feature is gated. Shown
@@ -32,6 +33,7 @@ export function UpgradePrompt({
       </p>
       <Link
         href="/pricing"
+        onClick={() => track("feature_gated", { feature, required_tier: requiredTier })}
         className="inline-block px-3 py-1.5 rounded-sm font-mono text-[10px] tracking-[0.14em] bg-[var(--accent-primary)] text-black hover:opacity-90"
       >
         SEE PRICING →

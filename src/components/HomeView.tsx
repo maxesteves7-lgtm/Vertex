@@ -33,6 +33,7 @@ import {
 } from "@/lib/filters";
 import { hasSeenTour } from "@/lib/onboarding";
 import { exportRowsToCsv } from "@/lib/csv";
+import { track } from "@/lib/analytics";
 import {
   deleteScreener,
   loadScreeners,
@@ -361,8 +362,10 @@ export function HomeView({
   }, [selected]);
 
   function toggleFavorite(id: string) {
+    const isFavorite = favoritesSet.has(id);
+    track("watchlist_updated", { action: isFavorite ? "removed" : "added" });
     setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      isFavorite ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
@@ -575,6 +578,7 @@ export function HomeView({
                     filtered.map((x) => x.row),
                     `futurist-${heading.toLowerCase().replace(/\s+/g, "-")}.csv`,
                   );
+                  track("csv_exported", { result_count: filtered.length });
                 }}
                 className={`hidden md:inline font-mono text-[10px] tracking-[0.12em] border border-[var(--border)] rounded-sm px-2.5 py-1 ${
                   canExport
@@ -953,6 +957,7 @@ export function HomeView({
           existing={builderTarget}
           totalSaved={screeners.length}
           onSave={(preset) => {
+            track("screener_saved", { is_new: builderTarget === null });
             setScreeners((cur) => {
               const next = upsertScreener(cur, preset);
               saveScreeners(next);
